@@ -4,6 +4,9 @@
   "description": "Insurance Management System Backend APIs",
   "main": "src/server.js",
   "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "start": "node src/server.js",
     "build": "echo 'No compilation step required for Node.js Express backend'",
