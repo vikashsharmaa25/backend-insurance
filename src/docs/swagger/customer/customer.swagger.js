@@ -13,7 +13,7 @@
  * @swagger
  * /api/customer/explore-plans:
  *   post:
- *     summary: Explore Plans & Calculate Dynamic Quotes (Input Age/DOB, Family Type, Sum Insured)
+ *     summary: Explore Plans & Calculate Dynamic Quotes (Input DOB, Family Type, Sum Insured)
  *     tags: [Customer Mobile App - Home & Explore]
  *     requestBody:
  *       required: true
@@ -22,6 +22,7 @@
  *           schema:
  *             type: object
  *             required:
+ *               - dob
  *               - familyTypeId
  *               - sumInsuredId
  *             properties:
@@ -29,9 +30,6 @@
  *                 type: string
  *                 format: date
  *                 example: "1998-05-15"
- *               age:
- *                 type: number
- *                 example: 28
  *               familyTypeId:
  *                 type: string
  *                 example: 60c72b2f9b1d8b2e88a12349
