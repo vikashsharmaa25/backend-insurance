@@ -22,6 +22,10 @@ const adminOptions = {
     },
     servers: [
       {
+        url: 'https://web-production-63f48.up.railway.app',
+        description: 'Production Server (Railway)',
+      },
+      {
         url: `http://localhost:${env.PORT}`,
         description: 'Local Development Server',
       },
@@ -64,6 +68,10 @@ const customerOptions = {
         'Dedicated API Documentation for Customer Mobile App (Dashboard, Dynamic Quote Engine, Apply for Insurance, Track Applications, KYC, My Policies).',
     },
     servers: [
+      {
+        url: 'https://web-production-63f48.up.railway.app',
+        description: 'Production Server (Railway)',
+      },
       {
         url: `http://localhost:${env.PORT}`,
         description: 'Local Development Server',

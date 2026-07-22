@@ -9,7 +9,7 @@
  * @swagger
  * /api/auth/register:
  *   post:
- *     summary: Register a new user (Default role CUSTOMER)
+ *     summary: Register a new user (name + email + phone, no password)
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -18,40 +18,32 @@
  *           schema:
  *             type: object
  *             required:
- *               - firstName
- *               - lastName
+ *               - name
  *               - email
- *               - password
+ *               - phone
  *             properties:
- *               firstName:
+ *               name:
  *                 type: string
- *                 example: John
- *               lastName:
- *                 type: string
- *                 example: Doe
+ *                 example: Siddhant Tiwari
  *               email:
  *                 type: string
  *                 format: email
- *                 example: john.doe@example.com
+ *                 example: siddhant.tiwari@gmail.com
  *               phone:
  *                 type: string
- *                 example: "+1234567890"
- *               password:
- *                 type: string
- *                 format: password
- *                 example: "SecurePassword123"
+ *                 example: "9792731575"
  *     responses:
  *       201:
- *         description: User registered successfully. Sets cookies.
+ *         description: User registered successfully.
  *       400:
- *         description: Validation error or Email already exists
+ *         description: Validation error or phone/email already exists
  */
 
 /**
  * @swagger
- * /api/auth/login:
+ * /api/auth/send-otp:
  *   post:
- *     summary: Authenticate user & get JWT tokens
+ *     summary: Send OTP to registered mobile number (Step 1 of login)
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -60,84 +52,84 @@
  *           schema:
  *             type: object
  *             required:
- *               - email
- *               - password
+ *               - phone
  *             properties:
- *               email:
+ *               phone:
  *                 type: string
- *                 format: email
- *                 example: john.doe@example.com
- *               password:
- *                 type: string
- *                 format: password
- *                 example: "SecurePassword123"
+ *                 example: "9792731575"
  *     responses:
  *       200:
- *         description: User logged in successfully. Sets cookies.
- *       401:
- *         description: Invalid credentials
+ *         description: OTP sent successfully. Returns demoOtp in response for demo/testing.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     phone:
+ *                       type: string
+ *                     demoOtp:
+ *                       type: string
+ *                       example: "482937"
+ *                     expiresInMinutes:
+ *                       type: number
+ *                       example: 5
+ *       404:
+ *         description: No account found with this phone number
+ */
+
+/**
+ * @swagger
+ * /api/auth/verify-otp:
+ *   post:
+ *     summary: Verify OTP and complete login (Step 2 of login)
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - phone
+ *               - otp
+ *             properties:
+ *               phone:
+ *                 type: string
+ *                 example: "9792731575"
+ *               otp:
+ *                 type: string
+ *                 example: "482937"
+ *     responses:
+ *       200:
+ *         description: Login successful. Returns accessToken + refreshToken + user.
+ *       400:
+ *         description: Invalid or expired OTP
  */
 
 /**
  * @swagger
  * /api/auth/refresh-token:
  *   post:
- *     summary: Refresh access token (Token Rotation)
+ *     summary: Refresh access token using refresh token (Token Rotation)
  *     tags: [Auth]
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *                 description: Optional if sent via cookie
  *     responses:
  *       200:
  *         description: Access token refreshed successfully.
  *       401:
  *         description: Refresh token invalid or missing
- */
-
-/**
- * @swagger
- * /api/auth/forgot-password:
- *   post:
- *     summary: Trigger password reset flow
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - email
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *                 example: john.doe@example.com
- *     responses:
- *       200:
- *         description: Password reset token link generated.
- */
-
-/**
- * @swagger
- * /api/auth/reset-password:
- *   post:
- *     summary: Reset password using token
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - token
- *               - newPassword
- *             properties:
- *               token:
- *                 type: string
- *               newPassword:
- *                 type: string
- *     responses:
- *       200:
- *         description: Password reset successfully.
  */
 
 /**
@@ -168,33 +160,6 @@
 
 /**
  * @swagger
- * /api/auth/change-password:
- *   patch:
- *     summary: Change user password
- *     tags: [Auth]
- *     security:
- *       - cookieAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - oldPassword
- *               - newPassword
- *             properties:
- *               oldPassword:
- *                 type: string
- *               newPassword:
- *                 type: string
- *     responses:
- *       200:
- *         description: Password changed successfully.
- */
-
-/**
- * @swagger
  * /api/auth/update-profile:
  *   patch:
  *     summary: Update profile details
@@ -208,12 +173,17 @@
  *           schema:
  *             type: object
  *             properties:
- *               firstName:
+ *               name:
  *                 type: string
- *               lastName:
+ *                 example: Siddhant Tiwari
+ *               email:
  *                 type: string
+ *                 format: email
  *               phone:
  *                 type: string
+ *               profileImage:
+ *                 type: string
+ *                 format: uri
  *     responses:
  *       200:
  *         description: Profile updated successfully.
