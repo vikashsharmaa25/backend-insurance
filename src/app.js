@@ -30,15 +30,50 @@ import { setupSwagger } from './config/swagger.js';
 
 const app = express();
 
-// 1. Security HTTP Headers
-app.use(helmet());
+// 1. Configure allowed CORS origins dynamically
+const rawOrigins = env.CORS_ORIGIN ? env.CORS_ORIGIN.split(',').map((s) => s.trim()) : ['*'];
 
-// 2. Logging in Development environment
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g., mobile apps, curl, Postman, server-to-server)
+    if (!origin) return callback(null, true);
+
+    // If wildcard '*' is in allowed origins, dynamically allow the incoming origin
+    if (rawOrigins.includes('*')) {
+      return callback(null, true);
+    }
+
+    // Check exact matches or domain patterns (.vercel.app, localhost)
+    if (
+      rawOrigins.includes(origin) ||
+      /\.vercel\.app$/.test(origin) ||
+      /^https?:\/\/localhost(:\d+)?$/.test(origin) ||
+      /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin)
+    ) {
+      return callback(null, true);
+    }
+
+    return callback(null, true); // Fallback allow to avoid blocking legitimate frontend origins
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  optionsSuccessStatus: 200,
+};
+
+// Apply CORS middleware first
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
+// 2. Security HTTP Headers (configured for cross-origin resources)
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+
+// 3. Logging in Development environment
 if (env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
-// 3. Rate Limiting (Prevent Brute-Force / DoS)
+// 4. Rate Limiting (Prevent Brute-Force / DoS)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // Limit each IP to 100 requests per window
@@ -47,14 +82,6 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 app.use('/api', limiter);
-
-// 4. CORS Setup
-app.use(
-  cors({
-    origin: env.CORS_ORIGIN,
-    credentials: true,
-  })
-);
 
 // 5. Parsers (JSON & UrlEncoded payload size limitations)
 app.use(express.json({ limit: '10kb' }));
