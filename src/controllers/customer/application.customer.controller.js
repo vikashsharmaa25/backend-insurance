@@ -1,0 +1,118 @@
+import crypto from 'crypto';
+import { PolicyApplication } from '../../models/policyApplication.model.js';
+import { PremiumRate } from '../../models/premiumRate.model.js';
+import ApiError from '../../utils/ApiError.js';
+import ApiResponse from '../../utils/ApiResponse.js';
+import asyncHandler from '../../utils/asyncHandler.js';
+
+export const applyForInsurancePolicy = asyncHandler(async (req, res) => {
+  const {
+    planId,
+    optionId,
+    sumInsuredId,
+    ageSlabId,
+    familyTypeId,
+    applicantDetails,
+    insuredMembers,
+    nominee,
+    paymentDetails,
+  } = req.body;
+
+  // 1. Verify pricing against rate card matrix
+  const rateEntry = await PremiumRate.findOne({
+    planId,
+    optionId,
+    sumInsuredId,
+    ageSlabId,
+    familyTypeId,
+    isDeleted: false,
+    status: 'active',
+  });
+
+  if (!rateEntry) {
+    throw new ApiError(400, 'Invalid policy configuration. No active rate matrix found for selected parameters.');
+  }
+
+  const basePremium = rateEntry.basePremium;
+  const gstRate = rateEntry.gstPercentage || 18;
+  const gstAmount = Math.round((basePremium * (gstRate / 100)) * 100) / 100;
+  const totalPremium = Math.round((basePremium + gstAmount) * 100) / 100;
+
+  if (Math.abs(paymentDetails.paidAmount - totalPremium) > 1) {
+    throw new ApiError(400, `Paid amount mismatch. Expected ₹${totalPremium}, got ₹${paymentDetails.paidAmount}`);
+  }
+
+  // 2. Generate Application Number e.g. APP-2026-X9A2B
+  const applicationNumber = `APP-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+
+  const application = await PolicyApplication.create({
+    applicationNumber,
+    userId: req.user._id,
+    planId,
+    optionId,
+    sumInsuredId,
+    ageSlabId,
+    familyTypeId,
+    applicantDetails: {
+      ...applicantDetails,
+      dob: new Date(applicantDetails.dob),
+    },
+    insuredMembers: insuredMembers.map((m) => ({
+      ...m,
+      dob: new Date(m.dob),
+    })),
+    nominee,
+    pricing: {
+      basePremium,
+      gstPercentage: gstRate,
+      gstAmount,
+      totalPremium,
+    },
+    paymentDetails: {
+      ...paymentDetails,
+      paidAt: new Date(),
+    },
+    status: 'PENDING_APPROVAL',
+  });
+
+  const createdApp = await PolicyApplication.findById(application._id)
+    .populate('planId', 'name slug logo')
+    .populate('optionId', 'name description')
+    .populate('sumInsuredId', 'displayName amount')
+    .populate('familyTypeId', 'name code');
+
+  return res.status(201).json(new ApiResponse(201, createdApp, 'Insurance application submitted successfully! Pending Admin Approval.'));
+});
+
+export const getMyApplications = asyncHandler(async (req, res) => {
+  const { status } = req.query;
+
+  const query = { userId: req.user._id, isDeleted: false };
+  if (status) query.status = status;
+
+  const applications = await PolicyApplication.find(query)
+    .populate('planId', 'name slug logo shortDescription')
+    .populate('optionId', 'name description')
+    .populate('sumInsuredId', 'displayName amount')
+    .populate('familyTypeId', 'name code')
+    .sort({ createdAt: -1 });
+
+  return res.status(200).json(new ApiResponse(200, applications, 'My applications list retrieved successfully'));
+});
+
+export const getApplicationDetails = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const application = await PolicyApplication.findOne({ _id: id, userId: req.user._id, isDeleted: false })
+    .populate('planId', 'name slug logo description')
+    .populate('optionId', 'name description')
+    .populate('sumInsuredId', 'displayName amount')
+    .populate('ageSlabId', 'displayName')
+    .populate('familyTypeId', 'name code');
+
+  if (!application) {
+    throw new ApiError(404, 'Policy application record not found');
+  }
+
+  return res.status(200).json(new ApiResponse(200, application, 'Application details fetched successfully'));
+});
