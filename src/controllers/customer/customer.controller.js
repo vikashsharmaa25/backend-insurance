@@ -65,15 +65,12 @@ export const getCustomerDashboard = asyncHandler(async (req, res) => {
 // ==========================================
 
 export const explorePlansWithQuotes = asyncHandler(async (req, res) => {
-  const { dob, age: inputAge, familyTypeId, sumInsuredId, planId } = req.body;
+  const { dob, familyTypeId, sumInsuredId, planId } = req.body;
 
-  let userAge = inputAge;
-  if (!userAge && dob) {
-    userAge = calculateAgeFromDob(dob);
-  }
+  const userAge = calculateAgeFromDob(dob);
 
   if (userAge === undefined || userAge === null || isNaN(userAge)) {
-    throw new ApiError(400, 'Please provide a valid Date of Birth (dob) or age');
+    throw new ApiError(400, 'Please provide a valid Date of Birth (dob)');
   }
 
   // 1. Find matching Age Slab

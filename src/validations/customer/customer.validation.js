@@ -23,8 +23,7 @@ export const submitKycSchema = z.object({
 
 export const explorePlansSchema = z.object({
   body: z.object({
-    dob: z.string().optional(), // Can pass DOB e.g. "1998-05-15" or age directly
-    age: z.number().min(0).max(120).optional(),
+    dob: z.string({ required_error: 'Date of birth is required' }).min(1, 'DOB cannot be empty'),
     familyTypeId: z
       .string({ required_error: 'Family Type ID is required' })
       .refine(isValidObjectId, 'Invalid Family Type ID'),
