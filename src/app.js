@@ -30,30 +30,14 @@ import { setupSwagger } from './config/swagger.js';
 
 const app = express();
 
-// 1. Configure allowed CORS origins dynamically
-const rawOrigins = env.CORS_ORIGIN ? env.CORS_ORIGIN.split(',').map((s) => s.trim()) : ['*'];
-
+// 1. Configure CORS to dynamically accept any requesting origin (supporting withCredentials: true)
 const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (e.g., mobile apps, curl, Postman, server-to-server)
     if (!origin) return callback(null, true);
-
-    // If wildcard '*' is in allowed origins, dynamically allow the incoming origin
-    if (rawOrigins.includes('*')) {
-      return callback(null, true);
-    }
-
-    // Check exact matches or domain patterns (.vercel.app, localhost)
-    if (
-      rawOrigins.includes(origin) ||
-      /\.vercel\.app$/.test(origin) ||
-      /^https?:\/\/localhost(:\d+)?$/.test(origin) ||
-      /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin)
-    ) {
-      return callback(null, true);
-    }
-
-    return callback(null, true); // Fallback allow to avoid blocking legitimate frontend origins
+    
+    // Always echo back requesting origin to satisfy Access-Control-Allow-Credentials: true
+    return callback(null, origin);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -61,9 +45,8 @@ const corsOptions = {
   optionsSuccessStatus: 200,
 };
 
-// Apply CORS middleware first
+// Apply CORS middleware to all requests & preflights
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
 
 // 2. Security HTTP Headers (configured for cross-origin resources)
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
