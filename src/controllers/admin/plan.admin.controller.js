@@ -6,7 +6,6 @@ import { FamilyType } from '../../models/familyType.model.js';
 import ApiError from '../../utils/ApiError.js';
 import ApiResponse from '../../utils/ApiResponse.js';
 import asyncHandler from '../../utils/asyncHandler.js';
-import { seedDatabase } from '../../scripts/seedDatabase.js';
 
 const generateSlug = (text) => {
   return text
@@ -668,9 +667,4 @@ export const toggleFamilyTypeStatus = asyncHandler(async (req, res) => {
   }
 
   return res.status(200).json(new ApiResponse(200, type, `Family Type status updated to ${status}`));
-});
-
-export const seedAllDataController = asyncHandler(async (req, res) => {
-  await seedDatabase();
-  return res.status(200).json(new ApiResponse(200, {}, 'All master data, options, policy conditions & premium rates successfully seeded to MongoDB!'));
 });

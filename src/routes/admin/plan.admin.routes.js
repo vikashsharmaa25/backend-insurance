@@ -39,7 +39,6 @@ import {
   updateFamilyType,
   deleteFamilyType,
   toggleFamilyTypeStatus,
-  seedAllDataController,
 } from '../../controllers/admin/plan.admin.controller.js';
 import {
   createPlanSchema,
@@ -58,9 +57,6 @@ import {
 } from '../../validations/admin/plan.admin.validation.js';
 
 const router = Router();
-
-// Publicly triggerable Endpoint to seed all database masters & matrices
-router.post('/seed-all', seedAllDataController);
 
 // Protect ALL Admin Plan Master routes for ADMIN users only
 router.use(authenticate, authorize('ADMIN'));
