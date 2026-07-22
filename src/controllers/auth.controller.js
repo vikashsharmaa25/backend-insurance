@@ -99,7 +99,13 @@ export const login = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, loggedInUser, 'User logged in successfully'));
+    .json(
+      new ApiResponse(
+        200,
+        { user: loggedInUser, accessToken, refreshToken },
+        'User logged in successfully'
+      )
+    );
 });
 
 /**
@@ -108,7 +114,10 @@ export const login = asyncHandler(async (req, res) => {
  * @access  Public
  */
 export const refreshAccessToken = asyncHandler(async (req, res) => {
-  const incomingRefreshToken = req.cookies?.refreshToken;
+  const incomingRefreshToken =
+    req.cookies?.refreshToken ||
+    req.body?.refreshToken ||
+    req.headers['x-refresh-token'];
 
   if (!incomingRefreshToken) {
     throw new ApiError(401, 'Unauthorized request: Refresh token is missing');
@@ -149,7 +158,13 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, {}, 'Access token refreshed successfully'));
+    .json(
+      new ApiResponse(
+        200,
+        { accessToken: newAccessToken, refreshToken: newRefreshToken },
+        'Access token refreshed successfully'
+      )
+    );
 });
 
 /**
