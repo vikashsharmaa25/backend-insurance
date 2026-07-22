@@ -1,28 +1,44 @@
 import { z } from 'zod';
 
+// Phone regex: supports international format e.g. +919876543210 or 9876543210
+const phoneRegex = /^\+?[1-9]\d{6,14}$/;
+
 export const registerSchema = z.object({
   body: z.object({
-    firstName: z
-      .string({ required_error: 'First name is required' })
-      .min(1, 'First name cannot be empty')
-      .max(50, 'First name cannot exceed 50 characters'),
-    lastName: z
-      .string({ required_error: 'Last name is required' })
-      .min(1, 'Last name cannot be empty')
-      .max(50, 'Last name cannot exceed 50 characters'),
+    name: z
+      .string({ required_error: 'Name is required' })
+      .min(2, 'Name must be at least 2 characters')
+      .max(100, 'Name cannot exceed 100 characters'),
     email: z
       .string({ required_error: 'Email is required' })
       .email('Invalid email address'),
     phone: z
-      .string()
-      .regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number format')
-      .optional()
-      .or(z.literal('')),
-    password: z
-      .string({ required_error: 'Password is required' })
-      .min(8, 'Password must be at least 8 characters long'),
+      .string({ required_error: 'Phone number is required' })
+      .regex(phoneRegex, 'Invalid phone number format (e.g. 9876543210 or +919876543210)'),
   }),
 });
+
+export const sendOtpSchema = z.object({
+  body: z.object({
+    phone: z
+      .string({ required_error: 'Phone number is required' })
+      .regex(phoneRegex, 'Invalid phone number format'),
+  }),
+});
+
+export const verifyOtpSchema = z.object({
+  body: z.object({
+    phone: z
+      .string({ required_error: 'Phone number is required' })
+      .regex(phoneRegex, 'Invalid phone number format'),
+    otp: z
+      .string({ required_error: 'OTP is required' })
+      .length(6, 'OTP must be exactly 6 digits')
+      .regex(/^\d{6}$/, 'OTP must contain only digits'),
+  }),
+});
+
+// ----- Legacy schemas (kept for backward compat) -----
 
 export const loginSchema = z.object({
   body: z.object({
@@ -48,19 +64,18 @@ export const changePasswordSchema = z.object({
 
 export const updateProfileSchema = z.object({
   body: z.object({
-    firstName: z
+    name: z
       .string()
-      .min(1, 'First name cannot be empty')
-      .max(50, 'First name cannot exceed 50 characters')
+      .min(2, 'Name must be at least 2 characters')
+      .max(100, 'Name cannot exceed 100 characters')
       .optional(),
-    lastName: z
+    email: z
       .string()
-      .min(1, 'Last name cannot be empty')
-      .max(50, 'Last name cannot exceed 50 characters')
+      .email('Invalid email address')
       .optional(),
     phone: z
       .string()
-      .regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number format')
+      .regex(phoneRegex, 'Invalid phone number format')
       .optional()
       .or(z.literal('')),
     profileImage: z

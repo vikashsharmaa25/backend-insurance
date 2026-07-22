@@ -4,33 +4,30 @@ import crypto from 'crypto';
 
 const userSchema = new mongoose.Schema(
   {
-    firstName: {
+    name: {
       type: String,
-      required: [true, 'First name is required'],
+      required: [true, 'Name is required'],
       trim: true,
-      maxlength: [50, 'First name cannot exceed 50 characters'],
-    },
-    lastName: {
-      type: String,
-      required: [true, 'Last name is required'],
-      trim: true,
-      maxlength: [50, 'Last name cannot exceed 50 characters'],
+      maxlength: [100, 'Name cannot exceed 100 characters'],
     },
     email: {
       type: String,
-      required: [true, 'Email is required'],
       unique: true,
+      sparse: true,       // allows multiple docs without email (null values)
       lowercase: true,
       trim: true,
       index: true,
     },
     phone: {
       type: String,
+      required: [true, 'Phone number is required'],
+      unique: true,
       trim: true,
+      index: true,
     },
     password: {
       type: String,
-      required: [true, 'Password is required'],
+      default: null,      // Optional — not used in OTP flow
     },
     role: {
       type: String,
@@ -51,6 +48,14 @@ const userSchema = new mongoose.Schema(
     isVerified: {
       type: Boolean,
       default: false,
+    },
+    otp: {
+      type: String,
+      default: null,
+    },
+    otpExpires: {
+      type: Date,
+      default: null,
     },
     refreshToken: {
       type: String,
@@ -74,9 +79,9 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// Hash password before saving if it is modified
+// Hash password before saving if it is modified (backward compat)
 userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
+  if (!this.isModified('password') || !this.password) return next();
 
   try {
     const salt = await bcrypt.genSalt(10);
@@ -87,9 +92,25 @@ userSchema.pre('save', async function (next) {
   }
 });
 
-// Compare password method
+// Compare password method (backward compat)
 userSchema.methods.comparePassword = async function (candidatePassword) {
+  if (!this.password) return false;
   return bcrypt.compare(candidatePassword, this.password);
+};
+
+// Generate a random 6-digit OTP and save it
+userSchema.methods.generateOtp = function () {
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  this.otp = otp;
+  this.otpExpires = new Date(Date.now() + 5 * 60 * 1000); // expires in 5 minutes
+  return otp;
+};
+
+// Verify OTP
+userSchema.methods.verifyOtp = function (inputOtp) {
+  if (!this.otp || !this.otpExpires) return false;
+  if (new Date() > this.otpExpires) return false;
+  return this.otp === inputOtp;
 };
 
 // Create a cryptographically secure token for password reset
