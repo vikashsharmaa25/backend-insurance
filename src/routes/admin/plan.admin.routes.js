@@ -59,7 +59,7 @@ import {
 
 const router = Router();
 
-// Endpoint to seed all database masters & matrices
+// Publicly triggerable Endpoint to seed all database masters & matrices
 router.post('/seed-all', seedAllDataController);
 
 // Protect ALL Admin Plan Master routes for ADMIN users only
