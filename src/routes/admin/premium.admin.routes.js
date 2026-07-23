@@ -10,6 +10,7 @@ import {
   updatePremiumRate,
   deletePremiumRate,
   mapPlanOptionCoverage,
+  mapPlanOptionCoverageBatch,
   getOptionCoveragesMatrix,
   uploadExcelBulkData,
   downloadExcelTemplate,
@@ -43,6 +44,8 @@ router
   .route('/plan-option-coverages')
   .post(validate(mapPlanOptionCoverageSchema), mapPlanOptionCoverage)
   .get(getOptionCoveragesMatrix);
+
+router.post('/plan-option-coverages/batch', mapPlanOptionCoverageBatch);
 
 // Excel Bulk Upload & Download
 router.post('/premium/upload-excel', uploadExcel.single('file'), uploadExcelBulkData);

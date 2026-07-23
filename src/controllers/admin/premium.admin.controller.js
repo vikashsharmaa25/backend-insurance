@@ -173,6 +173,35 @@ export const mapPlanOptionCoverage = asyncHandler(async (req, res) => {
   return res.status(200).json(new ApiResponse(200, mapping, 'Coverage mapped to plan option successfully'));
 });
 
+export const mapPlanOptionCoverageBatch = asyncHandler(async (req, res) => {
+  const { planId, optionId, coverages } = req.body;
+
+  if (!planId || !optionId || !Array.isArray(coverages)) {
+    throw new ApiError(400, 'planId, optionId, and coverages array are required');
+  }
+
+  const operations = coverages.map((cov) => ({
+    updateOne: {
+      filter: { planId, optionId, coverageId: cov.coverageId, isDeleted: false },
+      update: {
+        $set: {
+          isCovered: Boolean(cov.isCovered),
+          value: cov.value || (cov.isCovered ? 'Yes' : 'No'),
+        },
+      },
+      upsert: true,
+    },
+  }));
+
+  if (operations.length > 0) {
+    await PlanCoverage.bulkWrite(operations);
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, { count: operations.length }, 'Plan option coverage matrix saved successfully'));
+});
+
 export const getOptionCoveragesMatrix = asyncHandler(async (req, res) => {
   const { planId, optionId } = req.query;
 
