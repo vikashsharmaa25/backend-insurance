@@ -19,10 +19,7 @@
  *             type: object
  *             required:
  *               - name
- *               - email
  *               - phone
- *               - dob
- *               - gender
  *             properties:
  *               name:
  *                 type: string

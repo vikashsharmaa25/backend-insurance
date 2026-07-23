@@ -15,13 +15,16 @@ import env from '../config/env.js';
 /**
  * @desc    Register a new user (name + email + phone + dob + gender)
  * @route   POST /api/auth/register
- * @access  Public
  */
 export const register = asyncHandler(async (req, res) => {
-  const { name, email, phone, dob, gender } = req.body;
+  const { name, email, phone, dob, gender } = req.body || {};
 
-  if (!name || !email || !phone || !dob || !gender) {
-    throw new ApiError(400, 'Name, email, phone, DOB, and gender are required for registration');
+  const missingFields = [];
+  if (!name) missingFields.push('name');
+  if (!phone) missingFields.push('phone');
+
+  if (missingFields.length > 0) {
+    throw new ApiError(400, `Missing required registration fields: ${missingFields.join(', ')}`);
   }
 
   // Check if phone already registered
