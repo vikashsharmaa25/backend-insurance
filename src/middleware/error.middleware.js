@@ -18,11 +18,22 @@ const errorHandler = (err, req, res, next) => {
         message: el.message,
       }));
     }
-    // Mongoose duplicate key error
-    else if (error.code === 11000) {
-      statusCode = 400;
-      const field = Object.keys(error.keyValue)[0];
-      message = `${field.charAt(0).toUpperCase() + field.slice(1)} already exists`;
+    // Mongoose / MongoDB duplicate key error
+    else if (error.code === 11000 || error.code === 11001) {
+      statusCode = 409;
+      // BulkWriteError may not have keyValue — guard against null
+      const keyValue = error.keyValue || (error.writeErrors?.[0]?.err?.keyValue) || {};
+      const field = Object.keys(keyValue)[0] || 'field';
+      message = `Duplicate entry: ${field} already exists`;
+      errors = [{ field, message }];
+    }
+    // MongoDB BulkWriteError wrapper
+    else if (error.name === 'BulkWriteError' || error.name === 'MongoBulkWriteError') {
+      statusCode = 409;
+      const firstErr = error.writeErrors?.[0]?.err;
+      const keyValue = firstErr?.keyValue || {};
+      const field = Object.keys(keyValue)[0] || 'record';
+      message = `Duplicate entry detected for ${field}`;
       errors = [{ field, message }];
     }
     // Mongoose cast error (invalid ObjectId)

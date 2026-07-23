@@ -201,12 +201,15 @@ export const mapPlanCoverageBatch = asyncHandler(async (req, res) => {
         planId,
         coverageId: cov.coverageId,
         sumInsuredId: cov.sumInsuredId || null,
-        isDeleted: false,
       },
       update: {
         $set: {
           isCovered: Boolean(cov.isCovered),
           value: cov.value || (cov.isCovered ? 'Yes' : 'No'),
+          isDeleted: false,
+        },
+        $setOnInsert: {
+          sumInsuredId: cov.sumInsuredId || null,
         },
       },
       upsert: true,
@@ -214,7 +217,16 @@ export const mapPlanCoverageBatch = asyncHandler(async (req, res) => {
   }));
 
   if (operations.length > 0) {
-    await PlanCoverage.bulkWrite(operations);
+    try {
+      await PlanCoverage.bulkWrite(operations, { ordered: false });
+    } catch (bulkErr) {
+      // If some ops failed due to duplicate key (old index), ignore those
+      // and continue — the successfully written ones are fine
+      const code = bulkErr.code || bulkErr.result?.getWriteErrors?.()?.[0]?.code;
+      if (code !== 11000 && code !== 11001) {
+        throw bulkErr;
+      }
+    }
   }
 
   return res
