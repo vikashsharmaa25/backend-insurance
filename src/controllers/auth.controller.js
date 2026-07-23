@@ -260,9 +260,23 @@ export const logout = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const getCurrentUser = asyncHandler(async (req, res) => {
+  const kyc = await Kyc.findOne({ userId: req.user._id, isDeleted: false });
+
+  const userObj = req.user.toObject ? req.user.toObject() : req.user;
+
+  const userData = {
+    ...userObj,
+    dob: kyc ? kyc.dob : null,
+    gender: kyc ? kyc.gender : null,
+    kycStatus: kyc ? kyc.kycStatus : 'pending',
+    panNumber: kyc ? kyc.panNumber : null,
+    aadhaarNumber: kyc ? kyc.aadhaarNumber : null,
+    address: kyc ? kyc.address : null,
+  };
+
   return res
     .status(200)
-    .json(new ApiResponse(200, req.user, 'Current user fetched successfully'));
+    .json(new ApiResponse(200, userData, 'Current user fetched successfully'));
 });
 
 /**
