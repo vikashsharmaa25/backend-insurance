@@ -20,8 +20,8 @@ import env from '../config/env.js';
 export const register = asyncHandler(async (req, res) => {
   const { name, email, phone, dob, gender } = req.body;
 
-  if (!name || !phone) {
-    throw new ApiError(400, 'Name and phone number are required');
+  if (!name || !email || !phone || !dob || !gender) {
+    throw new ApiError(400, 'Name, email, phone, DOB, and gender are required for registration');
   }
 
   // Check if phone already registered

@@ -9,7 +9,7 @@
  * @swagger
  * /api/auth/register:
  *   post:
- *     summary: Register a new user (name + email + phone, no password)
+ *     summary: Register a new user (name + email + phone + dob + gender)
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -21,6 +21,8 @@
  *               - name
  *               - email
  *               - phone
+ *               - dob
+ *               - gender
  *             properties:
  *               name:
  *                 type: string
@@ -32,6 +34,16 @@
  *               phone:
  *                 type: string
  *                 example: "9792731575"
+ *               dob:
+ *                 type: string
+ *                 format: date
+ *                 example: "1998-05-15"
+ *                 description: Date of Birth in YYYY-MM-DD format
+ *               gender:
+ *                 type: string
+ *                 enum: [MALE, FEMALE, OTHER]
+ *                 example: MALE
+ *                 description: Gender (MALE / FEMALE / OTHER)
  *     responses:
  *       201:
  *         description: User registered successfully.
