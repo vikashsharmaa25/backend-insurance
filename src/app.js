@@ -30,31 +30,53 @@ import { setupSwagger } from './config/swagger.js';
 
 const app = express();
 
-// 1. Configure CORS to dynamically accept any requesting origin (supporting withCredentials: true)
+// List of allowed origins for production (Vercel) & local development
+const allowedOrigins = [
+  'https://frontend-insurance-five.vercel.app',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:5000',
+  'https://web-production-63f48.up.railway.app',
+];
+
+// 1. Configure CORS to dynamically accept allowed origins & Vercel previews
 const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (e.g., mobile apps, curl, Postman, server-to-server)
     if (!origin) return callback(null, true);
-    // Always echo back requesting origin to satisfy Access-Control-Allow-Credentials: true
-    return callback(null, origin);
+
+    // Allow exact matches or any Vercel app subdomain
+    if (
+      allowedOrigins.includes(origin) ||
+      origin.endsWith('.vercel.app') ||
+      origin.includes('localhost') ||
+      origin.includes('127.0.0.1')
+    ) {
+      return callback(null, true);
+    }
+
+    // Default echo back origin for dev/preview flexibility
+    return callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cookie'],
+  exposedHeaders: ['Set-Cookie'],
   optionsSuccessStatus: 200,
 };
 
-// Apply CORS middleware to all requests & preflights
+// Apply CORS middleware to all requests
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
 
-// Explicit header middleware as backup
+// Explicit preflight and header injection middleware
 app.use((req, res, next) => {
-  const origin = req.headers.origin || '*';
-  res.header('Access-Control-Allow-Origin', origin);
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  const origin = req.headers.origin || 'https://frontend-insurance-five.vercel.app';
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cookie');
+  res.setHeader('Access-Control-Expose-Headers', 'Set-Cookie');
+
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -62,7 +84,12 @@ app.use((req, res, next) => {
 });
 
 // 2. Security HTTP Headers (configured for cross-origin resources)
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginOpenerPolicy: { policy: 'unsafe-none' },
+  })
+);
 
 // 3. Logging in Development environment
 if (env.NODE_ENV === 'development') {
@@ -72,7 +99,7 @@ if (env.NODE_ENV === 'development') {
 // 4. Rate Limiting (Prevent Brute-Force / DoS)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 500, // Limit each IP to 500 requests per window
+  max: 1000, // High limit for smooth dashboard & matrix operations
   message: 'Too many requests from this IP, please try again after 15 minutes.',
   standardHeaders: true,
   legacyHeaders: false,
