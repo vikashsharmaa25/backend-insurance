@@ -140,13 +140,26 @@ export const getPremiumRateById = asyncHandler(async (req, res) => {
 
 export const updatePremiumRate = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { basePremium, gstPercentage, status } = req.body;
+  const { planId, sumInsuredId, ageSlabId, familyTypeId, basePremium, gstPercentage, status } = req.body;
+
+  const updateFields = {};
+  if (planId !== undefined) updateFields.planId = planId;
+  if (sumInsuredId !== undefined) updateFields.sumInsuredId = sumInsuredId;
+  if (ageSlabId !== undefined) updateFields.ageSlabId = ageSlabId;
+  if (familyTypeId !== undefined) updateFields.familyTypeId = familyTypeId;
+  if (basePremium !== undefined) updateFields.basePremium = basePremium;
+  if (gstPercentage !== undefined) updateFields.gstPercentage = gstPercentage;
+  if (status !== undefined) updateFields.status = status;
 
   const rate = await PremiumRate.findOneAndUpdate(
     { _id: id, isDeleted: false },
-    { $set: { basePremium, gstPercentage, status } },
+    { $set: updateFields },
     { new: true, runValidators: true }
-  );
+  )
+    .populate('planId', 'name')
+    .populate('sumInsuredId', 'displayName amount')
+    .populate('ageSlabId', 'displayName minAge maxAge')
+    .populate('familyTypeId', 'name code');
 
   if (!rate) {
     throw new ApiError(404, 'Premium rate entry not found');
