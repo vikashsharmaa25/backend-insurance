@@ -30,19 +30,28 @@ const calculateAgeFromDob = (dobString) => {
 
 export const getCustomerDashboard = asyncHandler(async (req, res) => {
   const [plans, kyc] = await Promise.all([
-    Plan.find({ isDeleted: false, status: 'active' }).select('name slug shortDescription description logo'),
+    Plan.find({ isDeleted: false, status: 'active' })
+      .populate('slabs', 'displayName amount')
+      .populate('sumInsuredSlabs', 'displayName amount'),
     req.user ? Kyc.findOne({ userId: req.user._id, isDeleted: false }).select('kycStatus dob gender') : null,
   ]);
 
   const featuredPlans = await Promise.all(
     plans.map(async (plan) => {
-      const minRate = await PremiumRate.findOne({
-        planId: plan._id,
-        isDeleted: false,
-        status: 'active',
-      })
-        .sort({ basePremium: 1 })
-        .select('basePremium gstPercentage');
+      const [minRate, planCoverages] = await Promise.all([
+        PremiumRate.findOne({
+          planId: plan._id,
+          isDeleted: false,
+          status: 'active',
+        })
+          .sort({ basePremium: 1 })
+          .select('basePremium gstPercentage'),
+
+        PlanCoverage.find({
+          planId: plan._id,
+          isDeleted: false,
+        }).populate('coverageId', 'title description icon'),
+      ]);
 
       let startingPrice = 499;
       if (minRate && minRate.basePremium) {
@@ -54,14 +63,23 @@ export const getCustomerDashboard = asyncHandler(async (req, res) => {
         _id: plan._id,
         name: plan.name,
         slug: plan.slug,
-        shortDescription:
-          plan.shortDescription ||
-          plan.description ||
-          'Comprehensive health coverage with zero copay & instant claims processing.',
-        description: plan.description || plan.shortDescription || '',
+        shortDescription: plan.shortDescription || '',
+        description: plan.description || '',
         logo: plan.logo || '',
+        status: plan.status,
+        sumInsuredSlabs: plan.sumInsuredSlabs || plan.slabs || [],
+        coverages: planCoverages.map((c) => ({
+          _id: c._id,
+          title: c.coverageId?.title || '',
+          description: c.coverageId?.description || '',
+          icon: c.coverageId?.icon || '',
+          isCovered: c.isCovered,
+          value: c.value,
+        })),
         minPrice: startingPrice,
         startingPrice,
+        createdAt: plan.createdAt,
+        updatedAt: plan.updatedAt,
       };
     })
   );
