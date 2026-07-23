@@ -26,11 +26,18 @@ const planSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
-    logo: {
-      type: String,
-      trim: true,
-      default: '',
-    },
+    slabs: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'SumInsured',
+      },
+    ],
+    sumInsuredSlabs: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'SumInsured',
+      },
+    ],
     status: {
       type: String,
       enum: {

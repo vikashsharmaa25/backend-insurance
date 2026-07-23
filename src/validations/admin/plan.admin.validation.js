@@ -15,6 +15,9 @@ export const createPlanSchema = z.object({
     shortDescription: z.string().optional(),
     description: z.string().optional(),
     logo: z.string().optional(),
+    slabs: z.array(z.string()).optional(),
+    ageSlabs: z.array(z.string()).optional(),
+    sumInsuredSlabs: z.array(z.string()).optional(),
     status: statusEnum.optional().default('active'),
   }),
 });
@@ -26,6 +29,9 @@ export const updatePlanSchema = z.object({
     shortDescription: z.string().optional(),
     description: z.string().optional(),
     logo: z.string().optional(),
+    slabs: z.array(z.string()).optional(),
+    ageSlabs: z.array(z.string()).optional(),
+    sumInsuredSlabs: z.array(z.string()).optional(),
     status: statusEnum.optional(),
   }),
 });

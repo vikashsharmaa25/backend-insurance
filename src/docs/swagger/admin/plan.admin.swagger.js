@@ -31,6 +31,22 @@
  *                 type: string
  *                 enum: [active, inactive]
  *                 example: active
+ *               slabs:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Array of Age Slab IDs
+ *                 example: ["65d1a2b3c4d5e6f7a8b9c0d1", "65d1a2b3c4d5e6f7a8b9c0d2"]
+ *               ageSlabs:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Array of Age Slab IDs
+ *               sumInsuredSlabs:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Array of Sum Insured Slab IDs
  *     responses:
  *       201:
  *         description: Plan created successfully
@@ -110,6 +126,21 @@
  *               status:
  *                 type: string
  *                 enum: [active, inactive]
+ *               slabs:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Array of Age Slab IDs
+ *               ageSlabs:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Array of Age Slab IDs
+ *               sumInsuredSlabs:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Array of Sum Insured Slab IDs
  *     responses:
  *       200:
  *         description: Plan updated successfully
