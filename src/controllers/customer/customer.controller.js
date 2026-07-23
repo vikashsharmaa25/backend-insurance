@@ -9,6 +9,7 @@ import { PremiumRate } from '../../models/premiumRate.model.js';
 import { PolicyCondition } from '../../models/policyCondition.model.js';
 import { Kyc } from '../../models/kyc.model.js';
 import { PolicyProposal } from '../../models/policyProposal.model.js';
+import { PolicyApplication } from '../../models/policyApplication.model.js';
 import ApiError from '../../utils/ApiError.js';
 import ApiResponse from '../../utils/ApiResponse.js';
 import asyncHandler from '../../utils/asyncHandler.js';
@@ -154,6 +155,19 @@ export const explorePlansWithQuotes = asyncHandler(async (req, res) => {
     }
 
     if (computedOptions.length > 0) {
+      let userApplicationStatus = null;
+      if (req.user?._id) {
+        const existingApp = await PolicyApplication.findOne({
+          userId: req.user._id,
+          planId: plan._id,
+          isDeleted: false,
+        }).sort({ createdAt: -1 });
+
+        if (existingApp) {
+          userApplicationStatus = existingApp.status;
+        }
+      }
+
       quoteResults.push({
         plan: {
           id: plan._id,
@@ -162,6 +176,7 @@ export const explorePlansWithQuotes = asyncHandler(async (req, res) => {
           shortDescription: plan.shortDescription,
           logo: plan.logo,
         },
+        userApplicationStatus,
         ageSlab: { id: ageSlab._id, displayName: ageSlab.displayName, userAge },
         familyType: { id: familyType._id, name: familyType.name, code: familyType.code },
         sumInsured: { id: sumInsured._id, amount: sumInsured.amount, displayName: sumInsured.displayName },
@@ -226,6 +241,30 @@ export const getCustomerKyc = asyncHandler(async (req, res) => {
 
 export const createPolicyProposal = asyncHandler(async (req, res) => {
   const { planId, optionId, sumInsuredId, ageSlabId, familyTypeId, insuredMembers, nominee } = req.body;
+
+  // Check if user already has a pending or active application/proposal for this insurance plan
+  const existingApp = await PolicyApplication.findOne({
+    userId: req.user._id,
+    planId,
+    isDeleted: false,
+    status: { $in: ['PENDING_APPROVAL', 'APPROVED', 'POLICY_ISSUED'] },
+  }).populate('planId', 'name');
+
+  if (existingApp) {
+    const planName = existingApp.planId?.name || 'this insurance plan';
+    if (existingApp.status === 'PENDING_APPROVAL') {
+      throw new ApiError(
+        400,
+        `You have already applied for ${planName}. Your application is currently pending admin approval.`
+      );
+    }
+    if (['APPROVED', 'POLICY_ISSUED'].includes(existingApp.status)) {
+      throw new ApiError(
+        400,
+        `You already hold an active policy for ${planName}. Duplicate policy creation is not allowed.`
+      );
+    }
+  }
 
   // Verify rate matrix to get pricing
   const rateEntry = await PremiumRate.findOne({

@@ -18,7 +18,31 @@ export const applyForInsurancePolicy = asyncHandler(async (req, res) => {
     paymentDetails,
   } = req.body;
 
-  // 1. Verify pricing against rate card matrix
+  // 1. Check if user already has a pending or active application for this insurance plan
+  const existingApplication = await PolicyApplication.findOne({
+    userId: req.user._id,
+    planId,
+    isDeleted: false,
+    status: { $in: ['PENDING_APPROVAL', 'APPROVED', 'POLICY_ISSUED'] },
+  }).populate('planId', 'name');
+
+  if (existingApplication) {
+    const planName = existingApplication.planId?.name || 'this insurance plan';
+    if (existingApplication.status === 'PENDING_APPROVAL') {
+      throw new ApiError(
+        400,
+        `You have already applied for ${planName}. Your application is currently pending admin approval. You cannot re-apply until it is approved or rejected.`
+      );
+    }
+    if (['APPROVED', 'POLICY_ISSUED'].includes(existingApplication.status)) {
+      throw new ApiError(
+        400,
+        `You already hold an active policy for ${planName}. Duplicate policy applications are not allowed.`
+      );
+    }
+  }
+
+  // 2. Verify pricing against rate card matrix
   const rateEntry = await PremiumRate.findOne({
     planId,
     optionId,
