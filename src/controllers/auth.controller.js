@@ -50,14 +50,18 @@ export const register = asyncHandler(async (req, res) => {
     isVerified: true,
   });
 
-  // Create KYC record with user-provided dob and gender only
+  // Save KYC record with user-provided dob and gender
+  let kycRecord = null;
   if (dob || gender) {
-    await Kyc.create({
-      userId: user._id,
-      dob: dob ? new Date(dob) : undefined,
-      gender: gender ? gender.toUpperCase() : undefined,
-      kycStatus: 'pending',
-    });
+    const updateData = { userId: user._id, kycStatus: 'pending' };
+    if (dob) updateData.dob = new Date(dob);
+    if (gender) updateData.gender = gender.toUpperCase();
+
+    kycRecord = await Kyc.findOneAndUpdate(
+      { userId: user._id },
+      { $set: updateData },
+      { upsert: true, new: true }
+    );
   }
 
   const createdUser = await User.findById(user._id).select('-password -refreshToken -otp -otpExpires');
@@ -65,9 +69,16 @@ export const register = asyncHandler(async (req, res) => {
     throw new ApiError(500, 'Something went wrong while creating the user');
   }
 
+  const responseUser = {
+    ...(createdUser.toObject ? createdUser.toObject() : createdUser),
+    dob: kycRecord?.dob || (dob ? new Date(dob) : null),
+    gender: kycRecord?.gender || (gender ? gender.toUpperCase() : null),
+    kycStatus: kycRecord?.kycStatus || 'pending',
+  };
+
   return res
     .status(201)
-    .json(new ApiResponse(201, createdUser, 'User registered successfully. You can now login with your mobile number.'));
+    .json(new ApiResponse(201, responseUser, 'User registered successfully. You can now login with your mobile number.'));
 });
 
 /**
@@ -157,6 +168,14 @@ export const verifyOtp = asyncHandler(async (req, res) => {
   await user.save({ validateBeforeSave: false });
 
   const loggedInUser = await User.findById(user._id).select('-password -refreshToken -otp -otpExpires');
+  const kyc = await Kyc.findOne({ userId: user._id, isDeleted: false });
+  const userObj = loggedInUser.toObject ? loggedInUser.toObject() : loggedInUser;
+  const userWithKyc = {
+    ...userObj,
+    dob: kyc ? kyc.dob : null,
+    gender: kyc ? kyc.gender : null,
+    kycStatus: kyc ? kyc.kycStatus : 'pending',
+  };
 
   // Set cookies
   setAuthCookies(res, accessToken, refreshToken);
@@ -164,7 +183,7 @@ export const verifyOtp = asyncHandler(async (req, res) => {
   return res.status(200).json(
     new ApiResponse(
       200,
-      { user: loggedInUser, accessToken, refreshToken },
+      { user: userWithKyc, accessToken, refreshToken },
       'Login successful'
     )
   );

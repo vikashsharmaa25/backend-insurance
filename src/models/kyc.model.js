@@ -11,12 +11,12 @@ const kycSchema = new mongoose.Schema(
     },
     dob: {
       type: Date,
-      required: [true, 'Date of Birth is required'],
+      required: false,
     },
     gender: {
       type: String,
       enum: ['MALE', 'FEMALE', 'OTHER'],
-      required: [true, 'Gender is required'],
+      required: false,
     },
     panNumber: {
       type: String,
