@@ -2,11 +2,131 @@
  * @swagger
  * /api/customer/dashboard:
  *   get:
- *     summary: Mobile App Dashboard - Banners, Featured Covers, Sum Insured & Family Options
+ *     summary: Mobile App Dashboard - Featured Plans, Minimum Prices (DOB & Age Slab based), Coverages & Sum Insured Slabs
  *     tags: [Customer Mobile App - Home & Explore]
+ *     parameters:
+ *       - in: query
+ *         name: dob
+ *         schema:
+ *           type: string
+ *           format: date
+ *         required: false
+ *         description: Optional customer Date of Birth (YYYY-MM-DD) to dynamically calculate user age and match rate slab
+ *         example: "2004-05-15"
+ *       - in: query
+ *         name: age
+ *         schema:
+ *           type: integer
+ *         required: false
+ *         description: Optional customer age in years to dynamically match rate slab
+ *         example: 22
  *     responses:
  *       200:
  *         description: Dashboard data fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Customer dashboard data fetched successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *                       nullable: true
+ *                       properties:
+ *                         _id:
+ *                           type: string
+ *                         firstName:
+ *                           type: string
+ *                         lastName:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *                         phone:
+ *                           type: string
+ *                         kycStatus:
+ *                           type: string
+ *                           example: "pending"
+ *                     featuredPlans:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           _id:
+ *                             type: string
+ *                             example: "6a6262a97e6d9b6b47ea2a0c"
+ *                           name:
+ *                             type: string
+ *                             example: "basic plan"
+ *                           slug:
+ *                             type: string
+ *                             example: "basic-plan"
+ *                           shortDescription:
+ *                             type: string
+ *                             example: "this short summary for basic plan"
+ *                           calculatedAge:
+ *                             type: integer
+ *                             example: 18
+ *                           matchedAgeSlab:
+ *                             type: string
+ *                             example: "18-25"
+ *                           sumInsured:
+ *                             type: object
+ *                             properties:
+ *                               _id:
+ *                                 type: string
+ *                               displayName:
+ *                                 type: string
+ *                                 example: "3 Lakhs"
+ *                               amount:
+ *                                 type: number
+ *                                 example: 300000
+ *                           basePrice:
+ *                             type: number
+ *                             description: Minimum base price entered in admin (Excl. GST) for customer's age slab
+ *                             example: 1000
+ *                           minPrice:
+ *                             type: number
+ *                             description: Starting minimum price
+ *                             example: 1000
+ *                           startingPrice:
+ *                             type: number
+ *                             description: Starting minimum price
+ *                             example: 1000
+ *                           priceWithGst:
+ *                             type: number
+ *                             description: Total minimum price inclusive of GST
+ *                             example: 1180
+ *                           gstPercentage:
+ *                             type: number
+ *                             example: 18
+ *                           coverages:
+ *                             type: array
+ *                             items:
+ *                               type: object
+ *                               properties:
+ *                                 _id:
+ *                                   type: string
+ *                                 title:
+ *                                   type: string
+ *                                 description:
+ *                                   type: string
+ *                                 icon:
+ *                                   type: string
+ *                                 isCovered:
+ *                                   type: boolean
+ *                                 value:
+ *                                   type: string
  */
 
 /**
