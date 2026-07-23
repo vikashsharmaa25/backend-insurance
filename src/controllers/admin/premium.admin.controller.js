@@ -445,8 +445,8 @@ export const downloadExcelTemplate = asyncHandler(async (req, res) => {
 
   // 1. Plans
   const plansWS = XLSX.utils.json_to_sheet([
-    { 'Plan Name': 'ICICI Pru Health Shield', Slug: 'icici-pru-health-shield', 'Short Description': 'Comprehensive family health cover with zero copay & unlimited reset', Description: 'Complete medical cover including cashless hospitalization, day care surgeries, maternity cover, and ambulance benefits.' },
-    { 'Plan Name': 'ICICI Elevate Health Plan', Slug: 'icici-elevate-health-plan', 'Short Description': 'Premium health cover with global hospitalization and wellness rewards', Description: 'Advanced health protection plan with high sum insured limits, international emergency cover, and cumulative bonus.' },
+    { 'Plan Name': 'Health Shield', Slug: 'health-shield', 'Short Description': 'Comprehensive family health cover with zero copay & unlimited reset', Description: 'Complete medical cover including cashless hospitalization, day care surgeries, maternity cover, and ambulance benefits.' },
+    { 'Plan Name': 'Elevate Health Plan', Slug: 'elevate-health-plan', 'Short Description': 'Premium health cover with global hospitalization and wellness rewards', Description: 'Advanced health protection plan with high sum insured limits, international emergency cover, and cumulative bonus.' },
   ]);
   XLSX.utils.book_append_sheet(workbook, plansWS, 'Plans');
 
@@ -478,27 +478,27 @@ export const downloadExcelTemplate = asyncHandler(async (req, res) => {
 
   // 4. Age Slabs
   const ageWS = XLSX.utils.json_to_sheet([
-    { 'Min Age': 18, 'Max Age': 35, 'Display Name': '18-35 Years' },
-    { 'Min Age': 36, 'Max Age': 45, 'Display Name': '36-45 Years' },
-    { 'Min Age': 46, 'Max Age': 55, 'Display Name': '46-55 Years' },
-    { 'Min Age': 56, 'Max Age': 65, 'Display Name': '56-65 Years' },
+    { 'Min Age': 18, 'Max Age': 35, 'Display Name': '18-35' },
+    { 'Min Age': 36, 'Max Age': 45, 'Display Name': '36-45' },
+    { 'Min Age': 46, 'Max Age': 55, 'Display Name': '46-55' },
+    { 'Min Age': 56, 'Max Age': 65, 'Display Name': '56-65' },
   ]);
   XLSX.utils.book_append_sheet(workbook, ageWS, 'Age Slabs');
 
   // 5. Family Types
-  const familyWS = XLSX.utils.json_to_sheet([
-    { Name: 'Individual', Code: 'INDIVIDUAL', 'Adult Count': 1, 'Child Count': 0 },
-    { Name: '1 Adult + 1 Kid', Code: '1A+1K', 'Adult Count': 1, 'Child Count': 1 },
-    { Name: '1 Adult + 2 Kids', Code: '1A+2K', 'Adult Count': 1, 'Child Count': 2 },
-    { Name: '2 Adults', Code: '2A', 'Adult Count': 2, 'Child Count': 0 },
-    { Name: '2 Adults + 1 Kid', Code: '2A+1K', 'Adult Count': 2, 'Child Count': 1 },
-    { Name: '2 Adults + 2 Kids', Code: '2A+2K', 'Adult Count': 2, 'Child Count': 2 },
+  const ftWS = XLSX.utils.json_to_sheet([
+    { Name: 'Self Only', Code: 'INDIVIDUAL' },
+    { Name: '1 Adult + 1 Child', Code: '1A+1K' },
+    { Name: '1 Adult + 2 Children', Code: '1A+2K' },
+    { Name: '2 Adults (Self + Spouse)', Code: '2A' },
+    { Name: '2 Adults + 1 Child', Code: '2A+1K' },
+    { Name: '2 Adults + 2 Children', Code: '2A+2K' },
   ]);
-  XLSX.utils.book_append_sheet(workbook, familyWS, 'Family Types');
+  XLSX.utils.book_append_sheet(workbook, ftWS, 'Family Types');
 
   // 6. Coverage Matrix
   const matrixRows = [];
-  const samplePlan = 'ICICI Pru Health Shield';
+  const samplePlan = 'Health Shield';
   const sampleCoverages = [
     { title: 'Hospitalisation Expenses', val: 'Yes' },
     { title: 'Day Care Treatment/Surgeries', val: 'Yes' },
@@ -533,32 +533,32 @@ export const downloadExcelTemplate = asyncHandler(async (req, res) => {
   // 7. Premium Rates
   const rateRows = [
     // 3 Lakhs
-    { 'Plan Name': 'ICICI Pru Health Shield', 'Sum Insured Amount': 300000, 'Age Slab': '18-35', 'Family Type Code': 'INDIVIDUAL', 'Base Premium': 3442, 'GST %': 18 },
-    { 'Plan Name': 'ICICI Pru Health Shield', 'Sum Insured Amount': 300000, 'Age Slab': '18-35', 'Family Type Code': '1A+1K', 'Base Premium': 4662, 'GST %': 18 },
-    { 'Plan Name': 'ICICI Pru Health Shield', 'Sum Insured Amount': 300000, 'Age Slab': '18-35', 'Family Type Code': '1A+2K', 'Base Premium': 5580, 'GST %': 18 },
-    { 'Plan Name': 'ICICI Pru Health Shield', 'Sum Insured Amount': 300000, 'Age Slab': '18-35', 'Family Type Code': '2A', 'Base Premium': 6120, 'GST %': 18 },
-    { 'Plan Name': 'ICICI Pru Health Shield', 'Sum Insured Amount': 300000, 'Age Slab': '18-35', 'Family Type Code': '2A+1K', 'Base Premium': 7340, 'GST %': 18 },
-    { 'Plan Name': 'ICICI Pru Health Shield', 'Sum Insured Amount': 300000, 'Age Slab': '18-35', 'Family Type Code': '2A+2K', 'Base Premium': 8250, 'GST %': 18 },
+    { 'Plan Name': 'Health Shield', 'Sum Insured Amount': 300000, 'Age Slab': '18-35', 'Family Type Code': 'INDIVIDUAL', 'Base Premium': 3442, 'GST %': 18 },
+    { 'Plan Name': 'Health Shield', 'Sum Insured Amount': 300000, 'Age Slab': '18-35', 'Family Type Code': '1A+1K', 'Base Premium': 4662, 'GST %': 18 },
+    { 'Plan Name': 'Health Shield', 'Sum Insured Amount': 300000, 'Age Slab': '18-35', 'Family Type Code': '1A+2K', 'Base Premium': 5580, 'GST %': 18 },
+    { 'Plan Name': 'Health Shield', 'Sum Insured Amount': 300000, 'Age Slab': '18-35', 'Family Type Code': '2A', 'Base Premium': 6120, 'GST %': 18 },
+    { 'Plan Name': 'Health Shield', 'Sum Insured Amount': 300000, 'Age Slab': '18-35', 'Family Type Code': '2A+1K', 'Base Premium': 7340, 'GST %': 18 },
+    { 'Plan Name': 'Health Shield', 'Sum Insured Amount': 300000, 'Age Slab': '18-35', 'Family Type Code': '2A+2K', 'Base Premium': 8250, 'GST %': 18 },
 
-    { 'Plan Name': 'ICICI Pru Health Shield', 'Sum Insured Amount': 300000, 'Age Slab': '36-45', 'Family Type Code': 'INDIVIDUAL', 'Base Premium': 4200, 'GST %': 18 },
-    { 'Plan Name': 'ICICI Pru Health Shield', 'Sum Insured Amount': 300000, 'Age Slab': '36-45', 'Family Type Code': '1A+1K', 'Base Premium': 5600, 'GST %': 18 },
-    { 'Plan Name': 'ICICI Pru Health Shield', 'Sum Insured Amount': 300000, 'Age Slab': '36-45', 'Family Type Code': '2A', 'Base Premium': 7500, 'GST %': 18 },
-    { 'Plan Name': 'ICICI Pru Health Shield', 'Sum Insured Amount': 300000, 'Age Slab': '36-45', 'Family Type Code': '2A+2K', 'Base Premium': 9800, 'GST %': 18 },
+    { 'Plan Name': 'Health Shield', 'Sum Insured Amount': 300000, 'Age Slab': '36-45', 'Family Type Code': 'INDIVIDUAL', 'Base Premium': 4200, 'GST %': 18 },
+    { 'Plan Name': 'Health Shield', 'Sum Insured Amount': 300000, 'Age Slab': '36-45', 'Family Type Code': '1A+1K', 'Base Premium': 5600, 'GST %': 18 },
+    { 'Plan Name': 'Health Shield', 'Sum Insured Amount': 300000, 'Age Slab': '36-45', 'Family Type Code': '2A', 'Base Premium': 7500, 'GST %': 18 },
+    { 'Plan Name': 'Health Shield', 'Sum Insured Amount': 300000, 'Age Slab': '36-45', 'Family Type Code': '2A+2K', 'Base Premium': 9800, 'GST %': 18 },
 
     // 5 Lakhs
-    { 'Plan Name': 'ICICI Pru Health Shield', 'Sum Insured Amount': 500000, 'Age Slab': '18-35', 'Family Type Code': 'INDIVIDUAL', 'Base Premium': 4850, 'GST %': 18 },
-    { 'Plan Name': 'ICICI Pru Health Shield', 'Sum Insured Amount': 500000, 'Age Slab': '18-35', 'Family Type Code': '1A+1K', 'Base Premium': 6450, 'GST %': 18 },
-    { 'Plan Name': 'ICICI Pru Health Shield', 'Sum Insured Amount': 500000, 'Age Slab': '18-35', 'Family Type Code': '2A', 'Base Premium': 8600, 'GST %': 18 },
-    { 'Plan Name': 'ICICI Pru Health Shield', 'Sum Insured Amount': 500000, 'Age Slab': '18-35', 'Family Type Code': '2A+2K', 'Base Premium': 11200, 'GST %': 18 },
+    { 'Plan Name': 'Health Shield', 'Sum Insured Amount': 500000, 'Age Slab': '18-35', 'Family Type Code': 'INDIVIDUAL', 'Base Premium': 4850, 'GST %': 18 },
+    { 'Plan Name': 'Health Shield', 'Sum Insured Amount': 500000, 'Age Slab': '18-35', 'Family Type Code': '1A+1K', 'Base Premium': 6450, 'GST %': 18 },
+    { 'Plan Name': 'Health Shield', 'Sum Insured Amount': 500000, 'Age Slab': '18-35', 'Family Type Code': '2A', 'Base Premium': 8600, 'GST %': 18 },
+    { 'Plan Name': 'Health Shield', 'Sum Insured Amount': 500000, 'Age Slab': '18-35', 'Family Type Code': '2A+2K', 'Base Premium': 11200, 'GST %': 18 },
 
-    { 'Plan Name': 'ICICI Pru Health Shield', 'Sum Insured Amount': 500000, 'Age Slab': '36-45', 'Family Type Code': 'INDIVIDUAL', 'Base Premium': 5900, 'GST %': 18 },
-    { 'Plan Name': 'ICICI Pru Health Shield', 'Sum Insured Amount': 500000, 'Age Slab': '36-45', 'Family Type Code': '2A', 'Base Premium': 10200, 'GST %': 18 },
-    { 'Plan Name': 'ICICI Pru Health Shield', 'Sum Insured Amount': 500000, 'Age Slab': '36-45', 'Family Type Code': '2A+2K', 'Base Premium': 13400, 'GST %': 18 },
+    { 'Plan Name': 'Health Shield', 'Sum Insured Amount': 500000, 'Age Slab': '36-45', 'Family Type Code': 'INDIVIDUAL', 'Base Premium': 5900, 'GST %': 18 },
+    { 'Plan Name': 'Health Shield', 'Sum Insured Amount': 500000, 'Age Slab': '36-45', 'Family Type Code': '2A', 'Base Premium': 10200, 'GST %': 18 },
+    { 'Plan Name': 'Health Shield', 'Sum Insured Amount': 500000, 'Age Slab': '36-45', 'Family Type Code': '2A+2K', 'Base Premium': 13400, 'GST %': 18 },
 
     // 10 Lakhs
-    { 'Plan Name': 'ICICI Pru Health Shield', 'Sum Insured Amount': 1000000, 'Age Slab': '18-35', 'Family Type Code': 'INDIVIDUAL', 'Base Premium': 7200, 'GST %': 18 },
-    { 'Plan Name': 'ICICI Pru Health Shield', 'Sum Insured Amount': 1000000, 'Age Slab': '18-35', 'Family Type Code': '2A', 'Base Premium': 12800, 'GST %': 18 },
-    { 'Plan Name': 'ICICI Pru Health Shield', 'Sum Insured Amount': 1000000, 'Age Slab': '18-35', 'Family Type Code': '2A+2K', 'Base Premium': 16500, 'GST %': 18 },
+    { 'Plan Name': 'Health Shield', 'Sum Insured Amount': 1000000, 'Age Slab': '18-35', 'Family Type Code': 'INDIVIDUAL', 'Base Premium': 7200, 'GST %': 18 },
+    { 'Plan Name': 'Health Shield', 'Sum Insured Amount': 1000000, 'Age Slab': '18-35', 'Family Type Code': '2A', 'Base Premium': 12800, 'GST %': 18 },
+    { 'Plan Name': 'Health Shield', 'Sum Insured Amount': 1000000, 'Age Slab': '18-35', 'Family Type Code': '2A+2K', 'Base Premium': 16500, 'GST %': 18 },
   ];
 
   const ratesWS = XLSX.utils.json_to_sheet(rateRows);
@@ -567,6 +567,6 @@ export const downloadExcelTemplate = asyncHandler(async (req, res) => {
   const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  res.setHeader('Content-Disposition', 'attachment; filename="ICICI_Insurance_Master_Bulk_Upload.xlsx"');
+  res.setHeader('Content-Disposition', 'attachment; filename="Insurance_Master_Bulk_Upload.xlsx"');
   return res.send(excelBuffer);
 });
