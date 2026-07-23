@@ -28,7 +28,6 @@ export const getAllApplications = asyncHandler(async (req, res) => {
   const applications = await PolicyApplication.find(query)
     .populate('userId', 'firstName lastName email phone')
     .populate('planId', 'name slug logo')
-    .populate('optionId', 'name')
     .populate('sumInsuredId', 'displayName amount')
     .populate('familyTypeId', 'name code')
     .sort({ createdAt: -1 })
@@ -58,7 +57,6 @@ export const getAdminApplicationDetails = asyncHandler(async (req, res) => {
   const application = await PolicyApplication.findOne({ _id: id, isDeleted: false })
     .populate('userId', 'firstName lastName email phone role')
     .populate('planId', 'name slug logo description')
-    .populate('optionId', 'name description')
     .populate('sumInsuredId', 'displayName amount')
     .populate('ageSlabId', 'displayName')
     .populate('familyTypeId', 'name code')
@@ -108,7 +106,6 @@ export const updateApplicationStatus = asyncHandler(async (req, res) => {
 
   const updatedApp = await PolicyApplication.findById(id)
     .populate('planId', 'name slug')
-    .populate('optionId', 'name')
     .populate('sumInsuredId', 'displayName')
     .populate('reviewedBy', 'firstName lastName');
 

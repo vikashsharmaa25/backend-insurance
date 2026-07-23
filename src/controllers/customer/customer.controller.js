@@ -120,6 +120,7 @@ export const explorePlansWithQuotes = asyncHandler(async (req, res) => {
 
     const planCoverages = await PlanCoverage.find({
       planId: plan._id,
+      $or: [{ sumInsuredId: sumInsured._id }, { sumInsuredId: null }],
       isDeleted: false,
     }).populate('coverageId', 'title description icon');
 
@@ -309,7 +310,11 @@ export const getPolicyDetails = asyncHandler(async (req, res) => {
 
   const [conditions, coverages] = await Promise.all([
     PolicyCondition.findOne({ planId: policy.planId._id, isDeleted: false }),
-    PlanCoverage.find({ planId: policy.planId._id, isDeleted: false }).populate('coverageId', 'title description icon'),
+    PlanCoverage.find({
+      planId: policy.planId._id,
+      $or: [{ sumInsuredId: policy.sumInsuredId?._id || policy.sumInsuredId }, { sumInsuredId: null }],
+      isDeleted: false,
+    }).populate('coverageId', 'title description icon'),
   ]);
 
   return res.status(200).json(

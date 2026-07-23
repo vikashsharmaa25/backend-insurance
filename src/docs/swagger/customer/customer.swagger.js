@@ -128,6 +128,10 @@
  *             properties:
  *               planId:
  *                 type: string
+ *               optionId:
+ *                 type: string
+ *                 nullable: true
+ *                 description: (Optional) Option ID
  *               sumInsuredId:
  *                 type: string
  *               ageSlabId:
