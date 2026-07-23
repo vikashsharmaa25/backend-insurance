@@ -9,9 +9,9 @@ import {
   getAllPremiumRates,
   updatePremiumRate,
   deletePremiumRate,
-  mapPlanOptionCoverage,
-  mapPlanOptionCoverageBatch,
-  getOptionCoveragesMatrix,
+  mapPlanCoverage,
+  mapPlanCoverageBatch,
+  getPlanCoveragesMatrix,
   uploadExcelBulkData,
   downloadExcelTemplate,
 } from '../../controllers/admin/premium.admin.controller.js';
@@ -39,13 +39,15 @@ router
   .put(updatePremiumRate)
   .delete(deletePremiumRate);
 
-// Plan Option Coverages Matrix
+// Plan Coverages Matrix
 router
-  .route('/plan-option-coverages')
-  .post(validate(mapPlanOptionCoverageSchema), mapPlanOptionCoverage)
-  .get(getOptionCoveragesMatrix);
+  .route('/plan-coverages')
+  .post(validate(mapPlanOptionCoverageSchema), mapPlanCoverage)
+  .get(getPlanCoveragesMatrix);
 
-router.post('/plan-option-coverages/batch', mapPlanOptionCoverageBatch);
+router.post('/plan-coverages/batch', mapPlanCoverageBatch);
+router.route('/plan-option-coverages').get(getPlanCoveragesMatrix).post(mapPlanCoverage);
+router.post('/plan-option-coverages/batch', mapPlanCoverageBatch);
 
 // Excel Bulk Upload & Download
 router.post('/premium/upload-excel', uploadExcel.single('file'), uploadExcelBulkData);
