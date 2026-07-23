@@ -8,7 +8,6 @@ import asyncHandler from '../../utils/asyncHandler.js';
 export const applyForInsurancePolicy = asyncHandler(async (req, res) => {
   const {
     planId,
-    optionId,
     sumInsuredId,
     ageSlabId,
     familyTypeId,
@@ -45,7 +44,6 @@ export const applyForInsurancePolicy = asyncHandler(async (req, res) => {
   // 2. Verify pricing against rate card matrix
   const rateEntry = await PremiumRate.findOne({
     planId,
-    optionId,
     sumInsuredId,
     ageSlabId,
     familyTypeId,
@@ -66,14 +64,13 @@ export const applyForInsurancePolicy = asyncHandler(async (req, res) => {
     throw new ApiError(400, `Paid amount mismatch. Expected ₹${totalPremium}, got ₹${paymentDetails.paidAmount}`);
   }
 
-  // 2. Generate Application Number e.g. APP-2026-X9A2B
+  // 3. Generate Application Number e.g. APP-2026-X9A2B
   const applicationNumber = `APP-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 
   const application = await PolicyApplication.create({
     applicationNumber,
     userId: req.user._id,
     planId,
-    optionId,
     sumInsuredId,
     ageSlabId,
     familyTypeId,
@@ -101,7 +98,6 @@ export const applyForInsurancePolicy = asyncHandler(async (req, res) => {
 
   const createdApp = await PolicyApplication.findById(application._id)
     .populate('planId', 'name slug logo')
-    .populate('optionId', 'name description')
     .populate('sumInsuredId', 'displayName amount')
     .populate('familyTypeId', 'name code');
 
@@ -116,7 +112,6 @@ export const getMyApplications = asyncHandler(async (req, res) => {
 
   let queryExec = PolicyApplication.find(query)
     .populate('planId', 'name slug logo shortDescription')
-    .populate('optionId', 'name description')
     .populate('sumInsuredId', 'displayName amount')
     .populate('ageSlabId', 'displayName minAge maxAge')
     .populate('familyTypeId', 'name code')
@@ -155,60 +150,6 @@ export const getApplicationDetails = asyncHandler(async (req, res) => {
 
   const application = await PolicyApplication.findOne({ _id: id, userId: req.user._id, isDeleted: false })
     .populate('planId', 'name slug logo description')
-    .populate('optionId', 'name description')
-    .populate('sumInsuredId', 'displayName amount')
-    .populate('ageSlabId', 'displayName')
-    .populate('familyTypeId', 'name code');
-
-  if (!application) {
-    throw new ApiError(404, 'Policy application record not found');
-  }
-
-  return res.status(200).json(new ApiResponse(200, application, 'Application details fetched successfully'));
-});
-
-  let queryExec = PolicyApplication.find(query)
-    .populate('planId', 'name slug logo shortDescription')
-    .populate('optionId', 'name description')
-    .populate('sumInsuredId', 'displayName amount')
-    .populate('ageSlabId', 'displayName minAge maxAge')
-    .populate('familyTypeId', 'name code')
-    .sort({ createdAt: -1 });
-
-  if (page || limit) {
-    const pageNum = parseInt(page, 10) || 1;
-    const limitNum = parseInt(limit, 10) || 10;
-    const skip = (pageNum - 1) * limitNum;
-    const total = await PolicyApplication.countDocuments(query);
-    const applications = await queryExec.skip(skip).limit(limitNum);
-
-    return res.status(200).json(
-      new ApiResponse(
-        200,
-        {
-          applications,
-          pagination: {
-            total,
-            page: pageNum,
-            limit: limitNum,
-            totalPages: Math.ceil(total / limitNum) || 1,
-          },
-        },
-        'My applications list retrieved successfully'
-      )
-    );
-  }
-
-  const applications = await queryExec;
-  return res.status(200).json(new ApiResponse(200, applications, 'My applications list retrieved successfully'));
-});
-
-export const getApplicationDetails = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-
-  const application = await PolicyApplication.findOne({ _id: id, userId: req.user._id, isDeleted: false })
-    .populate('planId', 'name slug logo description')
-    .populate('optionId', 'name description')
     .populate('sumInsuredId', 'displayName amount')
     .populate('ageSlabId', 'displayName')
     .populate('familyTypeId', 'name code');
