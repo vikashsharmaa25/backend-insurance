@@ -22,7 +22,7 @@ const generateSlug = (text) => {
 // ==========================================
 
 export const createPlan = asyncHandler(async (req, res) => {
-  const { name, slug, shortDescription, description, logo, status, slabs, ageSlabs, sumInsuredSlabs } = req.body;
+  const { name, slug, shortDescription, description, status, slabs, sumInsuredSlabs } = req.body;
 
   const planSlug = slug ? generateSlug(slug) : generateSlug(name);
 
@@ -38,17 +38,14 @@ export const createPlan = asyncHandler(async (req, res) => {
     slug: planSlug,
     shortDescription,
     description,
-    logo,
     slabs: selectedSlabs,
     sumInsuredSlabs: selectedSlabs,
-    ageSlabs: ageSlabs || [],
     status: status || 'active',
   });
 
   const plan = await Plan.findById(createdPlan._id)
     .populate('slabs', 'displayName amount')
-    .populate('sumInsuredSlabs', 'displayName amount')
-    .populate('ageSlabs', 'displayName minAge maxAge');
+    .populate('sumInsuredSlabs', 'displayName amount');
 
   return res.status(201).json(new ApiResponse(201, plan, 'Insurance plan created successfully'));
 });
@@ -76,8 +73,7 @@ export const getAllPlans = asyncHandler(async (req, res) => {
     .skip(skip)
     .limit(limitNum)
     .populate('slabs', 'displayName amount')
-    .populate('sumInsuredSlabs', 'displayName amount')
-    .populate('ageSlabs', 'displayName minAge maxAge');
+    .populate('sumInsuredSlabs', 'displayName amount');
 
   return res.status(200).json(
     new ApiResponse(
@@ -101,8 +97,7 @@ export const getSinglePlan = asyncHandler(async (req, res) => {
 
   const plan = await Plan.findOne({ _id: id, isDeleted: false })
     .populate('slabs', 'displayName amount')
-    .populate('sumInsuredSlabs', 'displayName amount')
-    .populate('ageSlabs', 'displayName minAge maxAge');
+    .populate('sumInsuredSlabs', 'displayName amount');
   if (!plan) {
     throw new ApiError(404, 'Insurance plan not found');
   }
@@ -114,7 +109,7 @@ export const getSinglePlan = asyncHandler(async (req, res) => {
 
 export const updatePlan = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { name, slug, shortDescription, description, logo, status, slabs, ageSlabs, sumInsuredSlabs } = req.body;
+  const { name, slug, shortDescription, description, status, slabs, sumInsuredSlabs } = req.body;
 
   const plan = await Plan.findOne({ _id: id, isDeleted: false });
   if (!plan) {
@@ -135,21 +130,18 @@ export const updatePlan = asyncHandler(async (req, res) => {
   if (name !== undefined) plan.name = name;
   if (shortDescription !== undefined) plan.shortDescription = shortDescription;
   if (description !== undefined) plan.description = description;
-  if (logo !== undefined) plan.logo = logo;
   if (status !== undefined) plan.status = status;
   if (slabs !== undefined || sumInsuredSlabs !== undefined) {
     const selectedSlabs = slabs || sumInsuredSlabs || [];
     plan.slabs = selectedSlabs;
     plan.sumInsuredSlabs = selectedSlabs;
   }
-  if (ageSlabs !== undefined) plan.ageSlabs = ageSlabs;
 
   await plan.save();
 
   const updatedPlan = await Plan.findById(plan._id)
     .populate('slabs', 'displayName amount')
-    .populate('sumInsuredSlabs', 'displayName amount')
-    .populate('ageSlabs', 'displayName minAge maxAge');
+    .populate('sumInsuredSlabs', 'displayName amount');
 
   return res.status(200).json(new ApiResponse(200, updatedPlan, 'Insurance plan updated successfully'));
 });
