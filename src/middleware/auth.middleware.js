@@ -18,7 +18,7 @@ export const authenticate = asyncHandler(async (req, res, next) => {
     throw new ApiError(401, 'Unauthorized: Access token is invalid or expired');
   }
 
-  const user = await User.findById(decoded._id).select('-password -refreshToken');
+  const user = await User.findById(decoded._id).select('-password -refreshToken -otp -otpExpires -passwordResetToken -passwordResetExpires');
   if (!user) {
     throw new ApiError(401, 'Unauthorized: User not found');
   }

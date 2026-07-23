@@ -22,12 +22,12 @@ const adminOptions = {
     },
     servers: [
       {
-        url: 'https://web-production-63f48.up.railway.app',
-        description: 'Production Server (Railway)',
-      },
-      {
         url: `http://localhost:${env.PORT}`,
         description: 'Local Development Server',
+      },
+      {
+        url: 'https://web-production-63f48.up.railway.app',
+        description: 'Production Server (Railway)',
       },
     ],
     tags: [
@@ -68,12 +68,12 @@ const customerOptions = {
     },
     servers: [
       {
-        url: 'https://web-production-63f48.up.railway.app',
-        description: 'Production Server (Railway)',
-      },
-      {
         url: `http://localhost:${env.PORT}`,
         description: 'Local Development Server',
+      },
+      {
+        url: 'https://web-production-63f48.up.railway.app',
+        description: 'Production Server (Railway)',
       },
     ],
     tags: [

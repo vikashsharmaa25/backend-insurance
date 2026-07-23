@@ -15,6 +15,8 @@ export const registerSchema = z.object({
     phone: z
       .string({ required_error: 'Phone number is required' })
       .regex(phoneRegex, 'Invalid phone number format (e.g. 9876543210 or +919876543210)'),
+    dob: z.string().optional().nullable(),
+    gender: z.enum(['MALE', 'FEMALE', 'OTHER']).optional().nullable(),
   }),
 });
 

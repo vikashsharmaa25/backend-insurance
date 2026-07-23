@@ -1,6 +1,5 @@
 import crypto from 'crypto';
 import { User } from '../models/user.model.js';
-import { Kyc } from '../models/kyc.model.js';
 import ApiError from '../utils/ApiError.js';
 import ApiResponse from '../utils/ApiResponse.js';
 import asyncHandler from '../utils/asyncHandler.js';
@@ -41,44 +40,25 @@ export const register = asyncHandler(async (req, res) => {
     }
   }
 
-  // Create user
+  // Create user — dob & gender stored directly on User model
   const user = await User.create({
     name,
     email: email || undefined,
     phone,
+    dob: dob ? new Date(dob) : undefined,
+    gender: gender ? gender.toUpperCase() : undefined,
     role: 'CUSTOMER',
     isVerified: true,
   });
 
-  // Save KYC record with user-provided dob and gender
-  let kycRecord = null;
-  if (dob || gender) {
-    const updateData = { userId: user._id, kycStatus: 'pending' };
-    if (dob) updateData.dob = new Date(dob);
-    if (gender) updateData.gender = gender.toUpperCase();
-
-    kycRecord = await Kyc.findOneAndUpdate(
-      { userId: user._id },
-      { $set: updateData },
-      { upsert: true, new: true }
-    );
-  }
-
-  const createdUser = await User.findById(user._id).select('-password -refreshToken -otp -otpExpires');
+  const createdUser = await User.findById(user._id).select('-password -refreshToken -otp -otpExpires -passwordResetToken -passwordResetExpires');
   if (!createdUser) {
     throw new ApiError(500, 'Something went wrong while creating the user');
   }
 
-  const responseUser = {
-    ...(createdUser.toObject ? createdUser.toObject() : createdUser),
-    dob: kycRecord?.dob || (dob ? new Date(dob) : null),
-    gender: kycRecord?.gender || (gender ? gender.toUpperCase() : null),
-    kycStatus: kycRecord?.kycStatus || 'pending',
-  };
-
   return res
     .status(201)
-    .json(new ApiResponse(201, responseUser, 'User registered successfully. You can now login with your mobile number.'));
+    .json(new ApiResponse(201, createdUser, 'User registered successfully. You can now login with your mobile number.'));
 });
 
 /**
@@ -167,15 +147,7 @@ export const verifyOtp = asyncHandler(async (req, res) => {
   user.lastLogin = new Date();
   await user.save({ validateBeforeSave: false });
 
-  const loggedInUser = await User.findById(user._id).select('-password -refreshToken -otp -otpExpires');
-  const kyc = await Kyc.findOne({ userId: user._id, isDeleted: false });
-  const userObj = loggedInUser.toObject ? loggedInUser.toObject() : loggedInUser;
-  const userWithKyc = {
-    ...userObj,
-    dob: kyc ? kyc.dob : null,
-    gender: kyc ? kyc.gender : null,
-    kycStatus: kyc ? kyc.kycStatus : 'pending',
-  };
+  const loggedInUser = await User.findById(user._id).select('-password -refreshToken -otp -otpExpires -passwordResetToken -passwordResetExpires');
 
   // Set cookies
   setAuthCookies(res, accessToken, refreshToken);
@@ -183,7 +155,7 @@ export const verifyOtp = asyncHandler(async (req, res) => {
   return res.status(200).json(
     new ApiResponse(
       200,
-      { user: userWithKyc, accessToken, refreshToken },
+      { user: loggedInUser, accessToken, refreshToken },
       'Login successful'
     )
   );
@@ -273,15 +245,22 @@ export const logout = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const getCurrentUser = asyncHandler(async (req, res) => {
-  const kyc = await Kyc.findOne({ userId: req.user._id, isDeleted: false });
-
   const userObj = req.user.toObject ? req.user.toObject() : req.user;
 
   const userData = {
-    ...userObj,
-    dob: kyc ? kyc.dob : null,
-    gender: kyc ? kyc.gender : null,
-    kycStatus: kyc ? kyc.kycStatus : 'pending',
+    _id: userObj._id,
+    name: userObj.name,
+    email: userObj.email || null,
+    phone: userObj.phone,
+    dob: userObj.dob || null,
+    gender: userObj.gender || null,
+    role: userObj.role,
+    profileImage: userObj.profileImage || null,
+    isActive: userObj.isActive,
+    isVerified: userObj.isVerified,
+    lastLogin: userObj.lastLogin || null,
+    createdAt: userObj.createdAt,
+    updatedAt: userObj.updatedAt,
   };
 
   return res

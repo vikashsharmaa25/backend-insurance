@@ -13,7 +13,7 @@ const userSchema = new mongoose.Schema(
     email: {
       type: String,
       unique: true,
-      sparse: true,       // allows multiple docs without email (null values)
+      sparse: true,     
       lowercase: true,
       trim: true,
       index: true,
@@ -27,7 +27,7 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      default: null,      // Optional — not used in OTP flow
+      default: null,
     },
     role: {
       type: String,
@@ -36,6 +36,15 @@ const userSchema = new mongoose.Schema(
         message: '{VALUE} is not a valid role',
       },
       default: 'CUSTOMER',
+    },
+    dob: {
+      type: Date,
+      default: null,
+    },
+    gender: {
+      type: String,
+      enum: ['MALE', 'FEMALE', 'OTHER'],
+      default: null,
     },
     profileImage: {
       type: String,

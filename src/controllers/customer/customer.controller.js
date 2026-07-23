@@ -46,6 +46,8 @@ export const getCustomerDashboard = asyncHandler(async (req, res) => {
     userAge = parseInt(req.query.age, 10);
   } else if (kyc && kyc.dob) {
     userAge = calculateAgeFromDob(kyc.dob);
+  } else if (req.user && req.user.dob) {
+    userAge = calculateAgeFromDob(req.user.dob);
   }
 
   // Fallback: If age is not set, use lowest minAge from active AgeSlabs
