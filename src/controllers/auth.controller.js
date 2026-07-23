@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { User } from '../models/user.model.js';
+import { Kyc } from '../models/kyc.model.js';
 import ApiError from '../utils/ApiError.js';
 import ApiResponse from '../utils/ApiResponse.js';
 import asyncHandler from '../utils/asyncHandler.js';
@@ -12,12 +13,16 @@ import { setAuthCookies, clearAuthCookies } from '../utils/cookieOptions.js';
 import env from '../config/env.js';
 
 /**
- * @desc    Register a new user (name + email + phone, no password)
+ * @desc    Register a new user (name + email + phone + dob + gender)
  * @route   POST /api/auth/register
  * @access  Public
  */
 export const register = asyncHandler(async (req, res) => {
-  const { name, email, phone } = req.body;
+  const { name, email, phone, dob, gender } = req.body;
+
+  if (!name || !phone) {
+    throw new ApiError(400, 'Name and phone number are required');
+  }
 
   // Check if phone already registered
   const existingPhone = await User.findOne({ phone });
@@ -39,6 +44,26 @@ export const register = asyncHandler(async (req, res) => {
     email: email || undefined,
     phone,
     role: 'CUSTOMER',
+    isVerified: true,
+  });
+
+  // Create dummy verified KYC record automatically
+  const parsedDob = dob ? new Date(dob) : new Date('1995-01-01');
+  const formattedGender = gender ? gender.toUpperCase() : 'MALE';
+
+  await Kyc.create({
+    userId: user._id,
+    dob: parsedDob,
+    gender: formattedGender,
+    panNumber: 'ABCDE1234F',
+    aadhaarNumber: '123456789012',
+    address: {
+      street: '123 Banking Enclave',
+      city: 'Mumbai',
+      state: 'Maharashtra',
+      pincode: '400001',
+    },
+    kycStatus: 'verified',
   });
 
   const createdUser = await User.findById(user._id).select('-password -refreshToken -otp -otpExpires');
