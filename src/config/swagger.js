@@ -40,7 +40,6 @@ const adminOptions = {
       { name: 'Age Slab Master', description: '👑 Age Bracket Slabs Master' },
       { name: 'Family Type Master', description: '👑 Family Composition Types Master' },
       { name: 'Plan Option Coverages', description: '👑 Coverage Matrix Mapping per Option' },
-      { name: 'Policy Conditions Master', description: '👑 Policy Wording, Caps & Sub-limits' },
       { name: 'Premium Rate Matrix', description: '👑 Premium Rate Card & Excel Bulk Upload' },
     ],
     components: {

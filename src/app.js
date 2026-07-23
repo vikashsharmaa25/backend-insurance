@@ -17,7 +17,6 @@ import authRouter from './routes/auth.routes.js';
 // 👑 Admin Routes
 import planAdminRouter from './routes/admin/plan.admin.routes.js';
 import premiumAdminRouter from './routes/admin/premium.admin.routes.js';
-import policyConditionAdminRouter from './routes/admin/policyCondition.admin.routes.js';
 import applicationAdminRouter from './routes/admin/application.admin.routes.js';
 
 // 📱 Customer Mobile App Routes
@@ -135,7 +134,6 @@ app.use('/api/auth', authRouter);
 // 👑 Admin Master Routes (/api/admin/*)
 app.use('/api/admin', planAdminRouter);
 app.use('/api/admin', premiumAdminRouter);
-app.use('/api/admin', policyConditionAdminRouter);
 app.use('/api/admin', applicationAdminRouter);
 
 // 📱 Customer Mobile App Routes (/api/customer/*)

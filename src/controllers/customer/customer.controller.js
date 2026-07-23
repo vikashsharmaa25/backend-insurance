@@ -6,7 +6,6 @@ import { AgeSlab } from '../../models/ageSlab.model.js';
 import { FamilyType } from '../../models/familyType.model.js';
 import { PlanCoverage } from '../../models/planCoverage.model.js';
 import { PremiumRate } from '../../models/premiumRate.model.js';
-import { PolicyCondition } from '../../models/policyCondition.model.js';
 import { Kyc } from '../../models/kyc.model.js';
 import { PolicyProposal } from '../../models/policyProposal.model.js';
 import { PolicyApplication } from '../../models/policyApplication.model.js';
@@ -100,8 +99,6 @@ export const explorePlansWithQuotes = asyncHandler(async (req, res) => {
   const quoteResults = [];
 
   for (const plan of plans) {
-    const policyConditions = await PolicyCondition.findOne({ planId: plan._id, isDeleted: false });
-
     const rateEntry = await PremiumRate.findOne({
       planId: plan._id,
       sumInsuredId: sumInsured._id,
@@ -162,7 +159,6 @@ export const explorePlansWithQuotes = asyncHandler(async (req, res) => {
         isCovered: c.isCovered,
         value: c.value,
       })),
-      policyConditions,
     });
   }
 
@@ -323,21 +319,17 @@ export const getPolicyDetails = asyncHandler(async (req, res) => {
     throw new ApiError(404, 'Policy record not found');
   }
 
-  const [conditions, coverages] = await Promise.all([
-    PolicyCondition.findOne({ planId: policy.planId._id, isDeleted: false }),
-    PlanCoverage.find({
-      planId: policy.planId._id,
-      $or: [{ sumInsuredId: policy.sumInsuredId?._id || policy.sumInsuredId }, { sumInsuredId: null }],
-      isDeleted: false,
-    }).populate('coverageId', 'title description icon'),
-  ]);
+  const coverages = await PlanCoverage.find({
+    planId: policy.planId._id,
+    $or: [{ sumInsuredId: policy.sumInsuredId?._id || policy.sumInsuredId }, { sumInsuredId: null }],
+    isDeleted: false,
+  }).populate('coverageId', 'title description icon');
 
   return res.status(200).json(
     new ApiResponse(
       200,
       {
         policy,
-        policyWording: conditions,
         coverages: coverages.map((c) => ({ title: c.coverageId?.title, description: c.coverageId?.description, isCovered: c.isCovered, value: c.value })),
       },
       'Policy details fetched successfully'
