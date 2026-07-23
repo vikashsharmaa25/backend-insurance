@@ -9,8 +9,10 @@ export const createPremiumRateSchema = z.object({
       .string({ required_error: 'Plan ID is required' })
       .refine(isValidObjectId, 'Invalid Plan ID format'),
     optionId: z
-      .string({ required_error: 'Option ID is required' })
-      .refine(isValidObjectId, 'Invalid Option ID format'),
+      .string()
+      .refine(isValidObjectId, 'Invalid Option ID format')
+      .optional()
+      .nullable(),
     sumInsuredId: z
       .string({ required_error: 'Sum Insured ID is required' })
       .refine(isValidObjectId, 'Invalid Sum Insured ID format'),
@@ -34,7 +36,11 @@ export const bulkPremiumRateSchema = z.object({
       .array(
         z.object({
           planId: z.string().refine(isValidObjectId, 'Invalid Plan ID'),
-          optionId: z.string().refine(isValidObjectId, 'Invalid Option ID'),
+          optionId: z
+            .string()
+            .refine(isValidObjectId, 'Invalid Option ID')
+            .optional()
+            .nullable(),
           sumInsuredId: z.string().refine(isValidObjectId, 'Invalid Sum Insured ID'),
           ageSlabId: z.string().refine(isValidObjectId, 'Invalid Age Slab ID'),
           familyTypeId: z.string().refine(isValidObjectId, 'Invalid Family Type ID'),
