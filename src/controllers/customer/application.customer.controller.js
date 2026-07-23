@@ -1,12 +1,24 @@
 import crypto from 'crypto';
 import { PolicyApplication } from '../../models/policyApplication.model.js';
 import { PremiumRate } from '../../models/premiumRate.model.js';
+import { AgeSlab } from '../../models/ageSlab.model.js';
 import ApiError from '../../utils/ApiError.js';
 import ApiResponse from '../../utils/ApiResponse.js';
 import asyncHandler from '../../utils/asyncHandler.js';
 
+const calculateAgeFromDob = (dobString) => {
+  const birthDate = new Date(dobString);
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+};
+
 export const applyForInsurancePolicy = asyncHandler(async (req, res) => {
-  const {
+  let {
     planId,
     sumInsuredId,
     ageSlabId,
@@ -38,6 +50,23 @@ export const applyForInsurancePolicy = asyncHandler(async (req, res) => {
         400,
         `You already hold an active policy for ${planName}. Duplicate policy applications are not allowed.`
       );
+    }
+  }
+
+  // Auto-resolve ageSlabId if missing using applicantDetails.dob or insuredMembers[0].dob
+  if (!ageSlabId) {
+    const targetDob = applicantDetails?.dob || (insuredMembers && insuredMembers[0]?.dob);
+    if (targetDob) {
+      const userAge = calculateAgeFromDob(targetDob);
+      const matchedSlab = await AgeSlab.findOne({
+        minAge: { $lte: userAge },
+        maxAge: { $gte: userAge },
+        isDeleted: false,
+        status: 'active',
+      });
+      if (matchedSlab) {
+        ageSlabId = matchedSlab._id;
+      }
     }
   }
 

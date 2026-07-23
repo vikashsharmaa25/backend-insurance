@@ -146,6 +146,7 @@ export const explorePlansWithQuotes = asyncHandler(async (req, res) => {
         logo: plan.logo,
       },
       calculatedAge: userAge,
+      ageSlabId: ageSlab._id,
       matchedAgeSlab: ageSlab.displayName,
       userApplicationStatus,
       pricing: {
@@ -212,7 +213,7 @@ export const getCustomerKyc = asyncHandler(async (req, res) => {
 // ==========================================
 
 export const createPolicyProposal = asyncHandler(async (req, res) => {
-  const { planId, sumInsuredId, ageSlabId, familyTypeId, insuredMembers, nominee } = req.body;
+  let { planId, sumInsuredId, ageSlabId, familyTypeId, insuredMembers, nominee } = req.body;
 
   const existingApp = await PolicyApplication.findOne({
     userId: req.user._id,
@@ -234,6 +235,20 @@ export const createPolicyProposal = asyncHandler(async (req, res) => {
         400,
         `You already hold an active policy for ${planName}. Duplicate policy creation is not allowed.`
       );
+    }
+  }
+
+  // Auto-resolve ageSlabId if missing using primary insured member's DOB
+  if (!ageSlabId && insuredMembers && insuredMembers.length > 0 && insuredMembers[0].dob) {
+    const userAge = calculateAgeFromDob(insuredMembers[0].dob);
+    const matchedSlab = await AgeSlab.findOne({
+      minAge: { $lte: userAge },
+      maxAge: { $gte: userAge },
+      isDeleted: false,
+      status: 'active',
+    });
+    if (matchedSlab) {
+      ageSlabId = matchedSlab._id;
     }
   }
 

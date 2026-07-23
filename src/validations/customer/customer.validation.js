@@ -39,7 +39,7 @@ export const createProposalSchema = z.object({
     planId: z.string({ required_error: 'Plan ID is required' }).refine(isValidObjectId, 'Invalid Plan ID'),
     optionId: z.string().refine(isValidObjectId, 'Invalid Option ID').optional().nullable(),
     sumInsuredId: z.string({ required_error: 'Sum Insured ID is required' }).refine(isValidObjectId, 'Invalid Sum Insured ID'),
-    ageSlabId: z.string({ required_error: 'Age Slab ID is required' }).refine(isValidObjectId, 'Invalid Age Slab ID'),
+    ageSlabId: z.string().refine(isValidObjectId, 'Invalid Age Slab ID').optional().nullable(),
     familyTypeId: z.string({ required_error: 'Family Type ID is required' }).refine(isValidObjectId, 'Invalid Family Type ID'),
     insuredMembers: z
       .array(
