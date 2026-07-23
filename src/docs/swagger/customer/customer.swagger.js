@@ -131,6 +131,175 @@
 
 /**
  * @swagger
+ * /api/customer/plans/{id}:
+ *   get:
+ *     summary: Get Single Insurance Plan Details on basis of DOB, Sum Insured & Family Type
+ *     tags: [Customer Mobile App - Home & Explore]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Plan ObjectId
+ *         example: "6a6262a97e6d9b6b47ea2a0c"
+ *       - in: query
+ *         name: dob
+ *         schema:
+ *           type: string
+ *           format: date
+ *         required: false
+ *         description: Customer Date of Birth (YYYY-MM-DD) to calculate age & match age slab
+ *         example: "1995-08-15"
+ *       - in: query
+ *         name: age
+ *         schema:
+ *           type: integer
+ *         required: false
+ *         description: Customer age in years
+ *         example: 30
+ *     responses:
+ *       200:
+ *         description: Plan details fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Plan details fetched successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     plan:
+ *                       type: object
+ *                       properties:
+ *                         _id:
+ *                           type: string
+ *                         name:
+ *                           type: string
+ *                         slug:
+ *                           type: string
+ *                         shortDescription:
+ *                           type: string
+ *                         description:
+ *                           type: string
+ *                         logo:
+ *                           type: string
+ *                         status:
+ *                           type: string
+ *                     calculatedAge:
+ *                       type: integer
+ *                       example: 30
+ *                     dob:
+ *                       type: string
+ *                       example: "1995-08-15"
+ *                     matchedAgeSlab:
+ *                       type: object
+ *                       properties:
+ *                         _id:
+ *                           type: string
+ *                         displayName:
+ *                           type: string
+ *                           example: "26-30"
+ *                         minAge:
+ *                           type: integer
+ *                         maxAge:
+ *                           type: integer
+ *                     selectedSumInsured:
+ *                       type: object
+ *                       properties:
+ *                         _id:
+ *                           type: string
+ *                         displayName:
+ *                           type: string
+ *                         amount:
+ *                           type: number
+ *                     selectedFamilyType:
+ *                       type: object
+ *                       properties:
+ *                         _id:
+ *                           type: string
+ *                         name:
+ *                           type: string
+ *                         code:
+ *                           type: string
+ *                     pricing:
+ *                       type: object
+ *                       properties:
+ *                         basePremium:
+ *                           type: number
+ *                           example: 1200
+ *                         gstPercentage:
+ *                           type: number
+ *                           example: 18
+ *                         gstAmount:
+ *                           type: number
+ *                           example: 216
+ *                         totalPremium:
+ *                           type: number
+ *                           example: 1416
+ *                     sumInsuredOptions:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           _id:
+ *                             type: string
+ *                           displayName:
+ *                             type: string
+ *                           amount:
+ *                             type: number
+ *                           basePremium:
+ *                             type: number
+ *                           gstPercentage:
+ *                             type: number
+ *                           gstAmount:
+ *                             type: number
+ *                           totalPremium:
+ *                             type: number
+ *                     familyTypeOptions:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                     coverages:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           _id:
+ *                             type: string
+ *                           coverageId:
+ *                             type: string
+ *                           title:
+ *                             type: string
+ *                           description:
+ *                             type: string
+ *                           icon:
+ *                             type: string
+ *                           category:
+ *                             type: string
+ *                           isCovered:
+ *                             type: boolean
+ *                           value:
+ *                             type: string
+ *                     keyHighlights:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *       404:
+ *         description: Insurance Plan not found
+ */
+
+/**
+ * @swagger
  * /api/customer/explore-plans:
  *   post:
  *     summary: Explore Plans & Calculate Dynamic Quotes (Input DOB, Family Type, Sum Insured)

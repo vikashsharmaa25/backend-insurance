@@ -4,6 +4,7 @@ import { authorize } from '../../middleware/role.middleware.js';
 import validate from '../../middleware/validate.middleware.js';
 import {
   getCustomerDashboard,
+  getCustomerPlanDetails,
   explorePlansWithQuotes,
   submitCustomerKyc,
   getCustomerKyc,
@@ -21,6 +22,7 @@ const router = Router();
 
 // Mobile App Dashboard & Dynamic Quote Engine (Public / Optional Auth)
 router.get('/customer/dashboard', getCustomerDashboard);
+router.get('/customer/plans/:id', getCustomerPlanDetails);
 router.post('/customer/explore-plans', validate(explorePlansSchema), explorePlansWithQuotes);
 
 // Protect all remaining Customer routes for logged-in CUSTOMER & ADMIN users

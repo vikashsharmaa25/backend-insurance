@@ -177,6 +177,221 @@ export const getCustomerDashboard = asyncHandler(async (req, res) => {
 });
 
 // ==========================================
+// 1.1 CUSTOMER PLAN DETAILS BY ID
+// ==========================================
+
+export const getCustomerPlanDetails = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { dob, age } = req.query;
+
+  const plan = await Plan.findOne({ _id: id, isDeleted: false, status: 'active' })
+    .populate('slabs', 'displayName amount')
+    .populate('sumInsuredSlabs', 'displayName amount');
+
+  if (!plan) {
+    throw new ApiError(404, 'Insurance Plan not found or inactive');
+  }
+
+  // Calculate user age from query dob/age, or user profile/KYC, or default minAge
+  let userAge = null;
+  if (dob) {
+    userAge = calculateAgeFromDob(dob);
+  } else if (age) {
+    userAge = parseInt(age, 10);
+  } else if (req.user && req.user.dob) {
+    userAge = calculateAgeFromDob(req.user.dob);
+  } else {
+    // try to find from KYC
+    const kyc = req.user ? await Kyc.findOne({ userId: req.user._id, isDeleted: false }).select('dob') : null;
+    if (kyc && kyc.dob) {
+      userAge = calculateAgeFromDob(kyc.dob);
+    }
+  }
+
+  // Fallback if userAge not valid
+  if (!userAge || isNaN(userAge)) {
+    const minSlab = await AgeSlab.findOne({ isDeleted: false, status: 'active' }).sort({ minAge: 1 });
+    userAge = minSlab ? minSlab.minAge : 18;
+  }
+
+  // Find matching active AgeSlab for userAge
+  const ageSlab = await AgeSlab.findOne({
+    minAge: { $lte: userAge },
+    maxAge: { $gte: userAge },
+    isDeleted: false,
+    status: 'active',
+  });
+
+  // Fetch available sum insured options
+  let sumInsuredOptions = [];
+  if (plan.sumInsuredSlabs && plan.sumInsuredSlabs.length > 0) {
+    sumInsuredOptions = plan.sumInsuredSlabs;
+  } else if (plan.slabs && plan.slabs.length > 0) {
+    sumInsuredOptions = plan.slabs;
+  } else {
+    sumInsuredOptions = await SumInsured.find({ isDeleted: false, status: 'active' }).sort({ amount: 1 });
+  }
+
+  // Fetch all active family types
+  const familyTypeOptions = await FamilyType.find({ isDeleted: false, status: 'active' }).sort({ adultCount: 1, childCount: 1 });
+
+  // Determine selected sumInsured
+  let selectedSumInsured = null;
+  if (sumInsuredId) {
+    selectedSumInsured = sumInsuredOptions.find((si) => si._id.toString() === sumInsuredId);
+  }
+  if (!selectedSumInsured && sumInsuredOptions.length > 0) {
+    selectedSumInsured = sumInsuredOptions[0];
+  }
+
+  // Determine selected familyType
+  let selectedFamilyType = null;
+  if (familyTypeId) {
+    selectedFamilyType = familyTypeOptions.find((ft) => ft._id.toString() === familyTypeId);
+  }
+  if (!selectedFamilyType && familyTypeOptions.length > 0) {
+    selectedFamilyType = familyTypeOptions.find((ft) => ft.code === 'INDIVIDUAL') || familyTypeOptions[0];
+  }
+
+  // Find rate for selected combination or fallback
+  let selectedRate = null;
+  if (ageSlab && selectedSumInsured && selectedFamilyType) {
+    selectedRate = await PremiumRate.findOne({
+      planId: plan._id,
+      ageSlabId: ageSlab._id,
+      sumInsuredId: selectedSumInsured._id,
+      familyTypeId: selectedFamilyType._id,
+      isDeleted: false,
+      status: 'active',
+    });
+  }
+
+  if (!selectedRate && ageSlab) {
+    selectedRate = await PremiumRate.findOne({
+      planId: plan._id,
+      ageSlabId: ageSlab._id,
+      isDeleted: false,
+      status: 'active',
+    }).sort({ basePremium: 1 });
+  }
+
+  if (!selectedRate) {
+    selectedRate = await PremiumRate.findOne({
+      planId: plan._id,
+      isDeleted: false,
+      status: 'active',
+    }).sort({ basePremium: 1 });
+  }
+
+  let basePremium = selectedRate ? selectedRate.basePremium : 0;
+  let gstPercentage = selectedRate ? (selectedRate.gstPercentage || 18) : 18;
+  let gstAmount = Math.round((basePremium * (gstPercentage / 100)) * 100) / 100;
+  let totalPremium = Math.round((basePremium + gstAmount) * 100) / 100;
+
+  // Calculate pricing breakdown for ALL sum insured options for quick dynamic UI selection
+  const sumInsuredPricingMap = await Promise.all(
+    sumInsuredOptions.map(async (si) => {
+      let rate = null;
+      if (ageSlab && selectedFamilyType) {
+        rate = await PremiumRate.findOne({
+          planId: plan._id,
+          sumInsuredId: si._id,
+          ageSlabId: ageSlab._id,
+          familyTypeId: selectedFamilyType._id,
+          isDeleted: false,
+          status: 'active',
+        });
+      }
+      if (!rate && ageSlab) {
+        rate = await PremiumRate.findOne({
+          planId: plan._id,
+          sumInsuredId: si._id,
+          ageSlabId: ageSlab._id,
+          isDeleted: false,
+          status: 'active',
+        });
+      }
+      if (!rate) {
+        rate = await PremiumRate.findOne({
+          planId: plan._id,
+          sumInsuredId: si._id,
+          isDeleted: false,
+          status: 'active',
+        });
+      }
+
+      const base = rate ? rate.basePremium : basePremium;
+      const gst = rate ? (rate.gstPercentage || 18) : gstPercentage;
+      const gstAmt = Math.round((base * (gst / 100)) * 100) / 100;
+      const total = Math.round((base + gstAmt) * 100) / 100;
+
+      return {
+        _id: si._id,
+        displayName: si.displayName,
+        amount: si.amount,
+        basePremium: base,
+        gstPercentage: gst,
+        gstAmount: gstAmt,
+        totalPremium: total,
+      };
+    })
+  );
+
+  // Fetch plan coverages
+  const planCoverages = await PlanCoverage.find({
+    planId: plan._id,
+    isDeleted: false,
+  }).populate('coverageId', 'title description icon category');
+
+  const coverages = planCoverages.map((c) => ({
+    _id: c._id,
+    coverageId: c.coverageId?._id,
+    title: c.coverageId?.title || '',
+    description: c.coverageId?.description || '',
+    icon: c.coverageId?.icon || '',
+    category: c.coverageId?.category || 'General',
+    isCovered: c.isCovered,
+    value: c.value || '',
+  }));
+
+  const planDetails = {
+    plan: {
+      _id: plan._id,
+      name: plan.name,
+      slug: plan.slug,
+      shortDescription: plan.shortDescription || '',
+      description: plan.description || '',
+      logo: plan.logo || '',
+      status: plan.status,
+    },
+    calculatedAge: userAge,
+    dob: dob || req.user?.dob || null,
+    matchedAgeSlab: ageSlab ? { _id: ageSlab._id, displayName: ageSlab.displayName, minAge: ageSlab.minAge, maxAge: ageSlab.maxAge } : null,
+    selectedSumInsured,
+    selectedFamilyType,
+    pricing: {
+      basePremium,
+      gstPercentage,
+      gstAmount,
+      totalPremium,
+    },
+    sumInsuredOptions: sumInsuredPricingMap,
+    familyTypeOptions,
+    coverages,
+    keyHighlights: [
+      'Cashless Hospitalization across 10,000+ partner hospitals',
+      'In-patient hospitalization coverage (Room rent, ICU, Doctor fees)',
+      'Pre-hospitalization up to 60 days & Post-hospitalization up to 90 days',
+      'Day care treatment & AYUSH hospitalization included',
+      'Tax savings up to ₹75,000 under Section 80D',
+      'No claim bonus benefit up to 50% extra sum insured',
+    ],
+  };
+
+  return res.status(200).json(new ApiResponse(200, planDetails, 'Plan details fetched successfully'));
+});
+
+// ==========================================
 // 2. QUOTE GENERATOR ENGINE
 // ==========================================
 
