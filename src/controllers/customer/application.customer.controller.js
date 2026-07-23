@@ -85,18 +85,44 @@ export const applyForInsurancePolicy = asyncHandler(async (req, res) => {
 });
 
 export const getMyApplications = asyncHandler(async (req, res) => {
-  const { status } = req.query;
+  const { status, page, limit } = req.query;
 
   const query = { userId: req.user._id, isDeleted: false };
-  if (status) query.status = status;
+  if (status && status !== 'all') query.status = status;
 
-  const applications = await PolicyApplication.find(query)
+  let queryExec = PolicyApplication.find(query)
     .populate('planId', 'name slug logo shortDescription')
     .populate('optionId', 'name description')
     .populate('sumInsuredId', 'displayName amount')
+    .populate('ageSlabId', 'displayName minAge maxAge')
     .populate('familyTypeId', 'name code')
     .sort({ createdAt: -1 });
 
+  if (page || limit) {
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 10;
+    const skip = (pageNum - 1) * limitNum;
+    const total = await PolicyApplication.countDocuments(query);
+    const applications = await queryExec.skip(skip).limit(limitNum);
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          applications,
+          pagination: {
+            total,
+            page: pageNum,
+            limit: limitNum,
+            totalPages: Math.ceil(total / limitNum) || 1,
+          },
+        },
+        'My applications list retrieved successfully'
+      )
+    );
+  }
+
+  const applications = await queryExec;
   return res.status(200).json(new ApiResponse(200, applications, 'My applications list retrieved successfully'));
 });
 

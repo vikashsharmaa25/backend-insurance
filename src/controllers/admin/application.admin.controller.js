@@ -5,10 +5,11 @@ import ApiResponse from '../../utils/ApiResponse.js';
 import asyncHandler from '../../utils/asyncHandler.js';
 
 export const getAllApplications = asyncHandler(async (req, res) => {
-  const { search, status, page = 1, limit = 10 } = req.query;
+  const { search, status, userId, page = 1, limit = 10 } = req.query;
 
   const query = { isDeleted: false };
   if (status) query.status = status;
+  if (userId) query.userId = userId;
   if (search) {
     query.$or = [
       { applicationNumber: { $regex: search, $options: 'i' } },
