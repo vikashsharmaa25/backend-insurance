@@ -52,8 +52,15 @@ export const mapPlanOptionCoverageSchema = z.object({
       .string({ required_error: 'Plan ID is required' })
       .refine(isValidObjectId, 'Invalid Plan ID format'),
     optionId: z
-      .string({ required_error: 'Option ID is required' })
-      .refine(isValidObjectId, 'Invalid Option ID format'),
+      .string()
+      .refine(isValidObjectId, 'Invalid Option ID format')
+      .optional()
+      .nullable(),
+    sumInsuredId: z
+      .string()
+      .refine(isValidObjectId, 'Invalid Sum Insured ID format')
+      .optional()
+      .nullable(),
     coverageId: z
       .string({ required_error: 'Coverage ID is required' })
       .refine(isValidObjectId, 'Invalid Coverage ID format'),

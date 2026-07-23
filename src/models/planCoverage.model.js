@@ -14,6 +14,13 @@ const planCoverageSchema = new mongoose.Schema(
       required: [true, 'Coverage ID is required'],
       index: true,
     },
+    // Optional: per-slab coverage (null = applies to all slabs / global)
+    sumInsuredId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'SumInsured',
+      default: null,
+      index: true,
+    },
     isCovered: {
       type: Boolean,
       default: true,
@@ -34,9 +41,9 @@ const planCoverageSchema = new mongoose.Schema(
   }
 );
 
-// Compound index to ensure uniqueness of coverage per plan
+// Compound index: unique per plan + coverage + sumInsured slab
 planCoverageSchema.index(
-  { planId: 1, coverageId: 1, isDeleted: 1 },
+  { planId: 1, coverageId: 1, sumInsuredId: 1, isDeleted: 1 },
   { unique: true }
 );
 

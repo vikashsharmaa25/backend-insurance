@@ -176,10 +176,11 @@ export const deletePremiumRate = asyncHandler(async (req, res) => {
 // ==========================================
 
 export const mapPlanCoverage = asyncHandler(async (req, res) => {
-  const { planId, coverageId, isCovered, value } = req.body;
+  const { planId, coverageId, sumInsuredId, isCovered, value } = req.body;
 
+  const filter = { planId, coverageId, sumInsuredId: sumInsuredId || null, isDeleted: false };
   const mapping = await PlanCoverage.findOneAndUpdate(
-    { planId, coverageId, isDeleted: false },
+    filter,
     { $set: { isCovered, value: value || (isCovered ? 'Yes' : 'No') } },
     { new: true, upsert: true }
   );
@@ -196,7 +197,12 @@ export const mapPlanCoverageBatch = asyncHandler(async (req, res) => {
 
   const operations = coverages.map((cov) => ({
     updateOne: {
-      filter: { planId, coverageId: cov.coverageId, isDeleted: false },
+      filter: {
+        planId,
+        coverageId: cov.coverageId,
+        sumInsuredId: cov.sumInsuredId || null,
+        isDeleted: false,
+      },
       update: {
         $set: {
           isCovered: Boolean(cov.isCovered),
@@ -217,14 +223,16 @@ export const mapPlanCoverageBatch = asyncHandler(async (req, res) => {
 });
 
 export const getPlanCoveragesMatrix = asyncHandler(async (req, res) => {
-  const { planId } = req.query;
+  const { planId, sumInsuredId } = req.query;
 
   const query = { isDeleted: false };
   if (planId) query.planId = planId;
+  if (sumInsuredId) query.sumInsuredId = sumInsuredId;
 
   const matrix = await PlanCoverage.find(query)
     .populate('planId', 'name')
-    .populate('coverageId', 'title description icon');
+    .populate('coverageId', 'title description icon')
+    .populate('sumInsuredId', 'amount displayName');
 
   return res.status(200).json(new ApiResponse(200, matrix, 'Plan coverage matrix fetched successfully'));
 });
