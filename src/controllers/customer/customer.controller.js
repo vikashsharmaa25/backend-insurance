@@ -29,10 +29,8 @@ const calculateAgeFromDob = (dobString) => {
 // ==========================================
 
 export const getCustomerDashboard = asyncHandler(async (req, res) => {
-  const [plans, sumInsureds, familyTypes, kyc] = await Promise.all([
+  const [plans, kyc] = await Promise.all([
     Plan.find({ isDeleted: false, status: 'active' }).select('name slug shortDescription description logo'),
-    SumInsured.find({ isDeleted: false, status: 'active' }).sort({ amount: 1 }).select('amount displayName'),
-    FamilyType.find({ isDeleted: false, status: 'active' }).sort({ adultCount: 1, childCount: 1 }).select('name code adultCount childCount'),
     req.user ? Kyc.findOne({ userId: req.user._id, isDeleted: false }).select('kycStatus dob gender') : null,
   ]);
 
@@ -79,13 +77,7 @@ export const getCustomerDashboard = asyncHandler(async (req, res) => {
           kycStatus: kyc ? kyc.kycStatus : 'pending',
         }
       : null,
-    banners: [
-      { id: 1, title: 'Comprehensive Health Cover', subtitle: 'Zero Copay & Unlimited Reset', image: 'https://example.com/banner1.jpg' },
-      { id: 2, title: 'Maternity & Newborn Cover', subtitle: 'Pre & Post Natal Expenses Covered', image: 'https://example.com/banner2.jpg' },
-    ],
     featuredPlans,
-    sumInsuredOptions: sumInsureds,
-    familyTypes,
   };
 
   return res.status(200).json(new ApiResponse(200, dashboardData, 'Customer dashboard data fetched successfully'));
