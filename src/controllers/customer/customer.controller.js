@@ -38,14 +38,20 @@ export const getCustomerDashboard = asyncHandler(async (req, res) => {
     SumInsured.findOne({ isDeleted: false, status: 'active' }).sort({ amount: 1 }),
   ]);
 
-  // Calculate user age from DOB in query / KYC / default
-  let userAge = 25; // Default fallback age if DOB is not set
+  // Calculate user age from DOB in query / KYC / User / default from min AgeSlab
+  let userAge = null;
   if (req.query?.dob) {
     userAge = calculateAgeFromDob(req.query.dob);
   } else if (req.query?.age) {
-    userAge = parseInt(req.query.age, 10) || 25;
+    userAge = parseInt(req.query.age, 10);
   } else if (kyc && kyc.dob) {
     userAge = calculateAgeFromDob(kyc.dob);
+  }
+
+  // Fallback: If age is not set, use lowest minAge from active AgeSlabs
+  if (!userAge || isNaN(userAge)) {
+    const minSlab = await AgeSlab.findOne({ isDeleted: false, status: 'active' }).sort({ minAge: 1 });
+    userAge = minSlab ? minSlab.minAge : 18;
   }
 
   // Find matching active AgeSlab for userAge
@@ -58,19 +64,33 @@ export const getCustomerDashboard = asyncHandler(async (req, res) => {
 
   const featuredPlans = await Promise.all(
     plans.map(async (plan) => {
-      // Build specific query for user's age + individual cover + min sum insured
-      const query = {
-        planId: plan._id,
-        isDeleted: false,
-        status: 'active',
-      };
-      if (ageSlab) query.ageSlabId = ageSlab._id;
-      if (individualFamilyType) query.familyTypeId = individualFamilyType._id;
-      if (lowestSumInsured) query.sumInsuredId = lowestSumInsured._id;
+      let minRate = null;
 
-      let minRate = await PremiumRate.findOne(query).select('basePremium gstPercentage sumInsuredId');
+      if (ageSlab) {
+        // 1. Try finding exact rate for plan + user ageSlab + individual family type + lowest sum insured
+        const query = {
+          planId: plan._id,
+          ageSlabId: ageSlab._id,
+          isDeleted: false,
+          status: 'active',
+        };
+        if (individualFamilyType) query.familyTypeId = individualFamilyType._id;
+        if (lowestSumInsured) query.sumInsuredId = lowestSumInsured._id;
 
-      // Fallback: if exact rate entry for user age slab is missing, find minimum rate entry for this plan
+        minRate = await PremiumRate.findOne(query).select('basePremium gstPercentage sumInsuredId');
+
+        // 2. If exact rate not found, find minimum rate for this plan & user ageSlab
+        if (!minRate) {
+          minRate = await PremiumRate.findOne({
+            planId: plan._id,
+            ageSlabId: ageSlab._id,
+            isDeleted: false,
+            status: 'active',
+          }).sort({ basePremium: 1 }).select('basePremium gstPercentage sumInsuredId');
+        }
+      }
+
+      // 3. Fallback: if no rate entry for user age slab exists, find absolute lowest rate for this plan
       if (!minRate) {
         minRate = await PremiumRate.findOne({
           planId: plan._id,
@@ -79,10 +99,11 @@ export const getCustomerDashboard = asyncHandler(async (req, res) => {
         }).sort({ basePremium: 1 }).select('basePremium gstPercentage sumInsuredId');
       }
 
-      let basePrice = 499;
-      let startingPrice = 499;
-      let gstPercentage = 18;
-      if (minRate && minRate.basePremium) {
+      let basePrice = 0;
+      let startingPrice = 0;
+      let gstPercentage = 0;
+
+      if (minRate && typeof minRate.basePremium === 'number') {
         basePrice = minRate.basePremium;
         gstPercentage = minRate.gstPercentage || 18;
         startingPrice = Math.round(basePrice * (1 + gstPercentage / 100));
@@ -110,7 +131,7 @@ export const getCustomerDashboard = asyncHandler(async (req, res) => {
         logo: plan.logo || '',
         status: plan.status,
         calculatedAge: userAge,
-        matchedAgeSlab: ageSlab ? ageSlab.displayName || `${ageSlab.minAge}-${ageSlab.maxAge} Years` : '18-35 Years',
+        matchedAgeSlab: ageSlab ? (ageSlab.displayName || `${ageSlab.minAge}-${ageSlab.maxAge} Years`) : 'N/A',
         sumInsured: planSumInsured ? {
           _id: planSumInsured._id,
           displayName: planSumInsured.displayName,
