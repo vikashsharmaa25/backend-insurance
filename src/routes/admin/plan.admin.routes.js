@@ -9,12 +9,6 @@ import {
   updatePlan,
   deletePlan,
   togglePlanStatus,
-  createPlanOption,
-  getPlanOptions,
-  getSinglePlanOption,
-  updatePlanOption,
-  deletePlanOption,
-  togglePlanOptionStatus,
   createCoverage,
   getAllCoverages,
   getSingleCoverage,
@@ -43,8 +37,6 @@ import {
 import {
   createPlanSchema,
   updatePlanSchema,
-  createPlanOptionSchema,
-  updatePlanOptionSchema,
   createCoverageSchema,
   updateCoverageSchema,
   createSumInsuredSchema,
@@ -65,11 +57,6 @@ router.use(authenticate, authorize('ADMIN'));
 router.route('/plans').post(validate(createPlanSchema), createPlan).get(getAllPlans);
 router.route('/plans/:id').get(getSinglePlan).put(validate(updatePlanSchema), updatePlan).delete(deletePlan);
 router.patch('/plans/:id/status', validate(statusToggleSchema), togglePlanStatus);
-
-// Plan Options
-router.route('/plan-options').post(validate(createPlanOptionSchema), createPlanOption).get(getPlanOptions);
-router.route('/plan-options/:id').get(getSinglePlanOption).put(validate(updatePlanOptionSchema), updatePlanOption).delete(deletePlanOption);
-router.patch('/plan-options/:id/status', validate(statusToggleSchema), togglePlanOptionStatus);
 
 // Coverage Master
 router.route('/coverages').post(validate(createCoverageSchema), createCoverage).get(getAllCoverages);

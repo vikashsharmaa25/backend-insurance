@@ -8,12 +8,6 @@ const planCoverageSchema = new mongoose.Schema(
       required: [true, 'Plan ID is required'],
       index: true,
     },
-    optionId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'PlanOption',
-      required: [true, 'Option ID is required'],
-      index: true,
-    },
     coverageId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Coverage',
@@ -40,9 +34,9 @@ const planCoverageSchema = new mongoose.Schema(
   }
 );
 
-// Compound index to ensure uniqueness of coverage per plan option
+// Compound index to ensure uniqueness of coverage per plan
 planCoverageSchema.index(
-  { planId: 1, optionId: 1, coverageId: 1, isDeleted: 1 },
+  { planId: 1, coverageId: 1, isDeleted: 1 },
   { unique: true }
 );
 

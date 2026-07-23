@@ -8,12 +8,6 @@ const premiumRateSchema = new mongoose.Schema(
       required: [true, 'Plan ID is required'],
       index: true,
     },
-    optionId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'PlanOption',
-      required: [true, 'Option ID is required'],
-      index: true,
-    },
     sumInsuredId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'SumInsured',
@@ -63,7 +57,7 @@ const premiumRateSchema = new mongoose.Schema(
 
 // Compound unique index to prevent duplicate rates for identical parameters
 premiumRateSchema.index(
-  { planId: 1, optionId: 1, sumInsuredId: 1, ageSlabId: 1, familyTypeId: 1, isDeleted: 1 },
+  { planId: 1, sumInsuredId: 1, ageSlabId: 1, familyTypeId: 1, isDeleted: 1 },
   { unique: true }
 );
 

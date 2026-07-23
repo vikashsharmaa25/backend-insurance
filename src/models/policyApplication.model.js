@@ -46,11 +46,7 @@ const policyApplicationSchema = new mongoose.Schema(
       ref: 'Plan',
       required: [true, 'Plan ID is required'],
     },
-    optionId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'PlanOption',
-      required: [true, 'Option ID is required'],
-    },
+
     sumInsuredId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'SumInsured',

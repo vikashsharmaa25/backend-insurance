@@ -166,3 +166,56 @@ export const getApplicationDetails = asyncHandler(async (req, res) => {
 
   return res.status(200).json(new ApiResponse(200, application, 'Application details fetched successfully'));
 });
+
+  let queryExec = PolicyApplication.find(query)
+    .populate('planId', 'name slug logo shortDescription')
+    .populate('optionId', 'name description')
+    .populate('sumInsuredId', 'displayName amount')
+    .populate('ageSlabId', 'displayName minAge maxAge')
+    .populate('familyTypeId', 'name code')
+    .sort({ createdAt: -1 });
+
+  if (page || limit) {
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 10;
+    const skip = (pageNum - 1) * limitNum;
+    const total = await PolicyApplication.countDocuments(query);
+    const applications = await queryExec.skip(skip).limit(limitNum);
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          applications,
+          pagination: {
+            total,
+            page: pageNum,
+            limit: limitNum,
+            totalPages: Math.ceil(total / limitNum) || 1,
+          },
+        },
+        'My applications list retrieved successfully'
+      )
+    );
+  }
+
+  const applications = await queryExec;
+  return res.status(200).json(new ApiResponse(200, applications, 'My applications list retrieved successfully'));
+});
+
+export const getApplicationDetails = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const application = await PolicyApplication.findOne({ _id: id, userId: req.user._id, isDeleted: false })
+    .populate('planId', 'name slug logo description')
+    .populate('optionId', 'name description')
+    .populate('sumInsuredId', 'displayName amount')
+    .populate('ageSlabId', 'displayName')
+    .populate('familyTypeId', 'name code');
+
+  if (!application) {
+    throw new ApiError(404, 'Policy application record not found');
+  }
+
+  return res.status(200).json(new ApiResponse(200, application, 'Application details fetched successfully'));
+});

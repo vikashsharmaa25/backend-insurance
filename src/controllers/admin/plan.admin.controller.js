@@ -1,4 +1,4 @@
-import { Plan, PlanOption } from '../../models/plan.model.js';
+import { Plan } from '../../models/plan.model.js';
 import { Coverage } from '../../models/coverage.model.js';
 import { SumInsured } from '../../models/sumInsured.model.js';
 import { AgeSlab } from '../../models/ageSlab.model.js';
@@ -88,10 +88,8 @@ export const getSinglePlan = asyncHandler(async (req, res) => {
     throw new ApiError(404, 'Insurance plan not found');
   }
 
-  const options = await PlanOption.find({ planId: id, isDeleted: false });
-
   return res.status(200).json(
-    new ApiResponse(200, { ...plan.toObject(), options }, 'Plan details fetched successfully')
+    new ApiResponse(200, plan, 'Plan details fetched successfully')
   );
 });
 
@@ -139,8 +137,6 @@ export const deletePlan = asyncHandler(async (req, res) => {
     throw new ApiError(404, 'Insurance plan not found');
   }
 
-  await PlanOption.updateMany({ planId: id }, { $set: { isDeleted: true } });
-
   return res.status(200).json(new ApiResponse(200, {}, 'Insurance plan deleted successfully'));
 });
 
@@ -162,110 +158,7 @@ export const togglePlanStatus = asyncHandler(async (req, res) => {
 });
 
 // ==========================================
-// 2. PLAN OPTIONS ADMIN CONTROLLERS
-// ==========================================
-
-export const createPlanOption = asyncHandler(async (req, res) => {
-  const { planId, name, description, status } = req.body;
-
-  const plan = await Plan.findOne({ _id: planId, isDeleted: false });
-  if (!plan) {
-    throw new ApiError(404, 'Referenced Insurance plan not found');
-  }
-
-  const option = await PlanOption.create({
-    planId,
-    name,
-    description,
-    status: status || 'active',
-  });
-
-  return res.status(201).json(new ApiResponse(201, option, 'Plan option created successfully'));
-});
-
-export const getPlanOptions = asyncHandler(async (req, res) => {
-  const { planId } = req.query;
-
-  const query = { isDeleted: false };
-  if (planId) query.planId = planId;
-
-  const options = await PlanOption.find(query).populate('planId', 'name slug').sort({ createdAt: -1 });
-
-  return res.status(200).json(new ApiResponse(200, options, 'Plan options retrieved successfully'));
-});
-
-export const getSinglePlanOption = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-
-  const option = await PlanOption.findOne({ _id: id, isDeleted: false }).populate('planId', 'name slug');
-  if (!option) {
-    throw new ApiError(404, 'Plan option not found');
-  }
-
-  return res.status(200).json(new ApiResponse(200, option, 'Plan option fetched successfully'));
-});
-
-export const updatePlanOption = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const { name, description, status, planId } = req.body;
-
-  const option = await PlanOption.findOne({ _id: id, isDeleted: false });
-  if (!option) {
-    throw new ApiError(404, 'Plan option not found');
-  }
-
-  if (planId) {
-    const plan = await Plan.findOne({ _id: planId, isDeleted: false });
-    if (!plan) {
-      throw new ApiError(404, 'Referenced Insurance plan not found');
-    }
-    option.planId = planId;
-  }
-
-  if (name !== undefined) option.name = name;
-  if (description !== undefined) option.description = description;
-  if (status !== undefined) option.status = status;
-
-  await option.save();
-
-  return res.status(200).json(new ApiResponse(200, option, 'Plan option updated successfully'));
-});
-
-export const deletePlanOption = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-
-  const option = await PlanOption.findOneAndUpdate(
-    { _id: id, isDeleted: false },
-    { $set: { isDeleted: true } },
-    { new: true }
-  );
-
-  if (!option) {
-    throw new ApiError(404, 'Plan option not found');
-  }
-
-  return res.status(200).json(new ApiResponse(200, {}, 'Plan option deleted successfully'));
-});
-
-export const togglePlanOptionStatus = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body;
-
-  const option = await PlanOption.findOneAndUpdate(
-    { _id: id, isDeleted: false },
-    { $set: { status } },
-    { new: true }
-  );
-
-  if (!option) {
-    throw new ApiError(404, 'Plan option not found');
-  }
-
-  return res.status(200).json(new ApiResponse(200, option, `Option status updated to ${status}`));
-});
-
-// ==========================================
-// 3. COVERAGE MASTER ADMIN CONTROLLERS
+// 2. COVERAGE MASTER ADMIN CONTROLLERS
 // ==========================================
 
 export const createCoverage = asyncHandler(async (req, res) => {
@@ -369,7 +262,7 @@ export const toggleCoverageStatus = asyncHandler(async (req, res) => {
 });
 
 // ==========================================
-// 4. SUM INSURED MASTER ADMIN CONTROLLERS
+// 3. SUM INSURED MASTER ADMIN CONTROLLERS
 // ==========================================
 
 export const createSumInsured = asyncHandler(async (req, res) => {
@@ -470,7 +363,7 @@ export const toggleSumInsuredStatus = asyncHandler(async (req, res) => {
 });
 
 // ==========================================
-// 5. AGE SLAB MASTER ADMIN CONTROLLERS
+// 4. AGE SLAB MASTER ADMIN CONTROLLERS
 // ==========================================
 
 export const createAgeSlab = asyncHandler(async (req, res) => {
@@ -565,7 +458,7 @@ export const toggleAgeSlabStatus = asyncHandler(async (req, res) => {
 });
 
 // ==========================================
-// 6. FAMILY TYPE MASTER ADMIN CONTROLLERS
+// 5. FAMILY TYPE MASTER ADMIN CONTROLLERS
 // ==========================================
 
 export const createFamilyType = asyncHandler(async (req, res) => {

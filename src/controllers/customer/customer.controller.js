@@ -361,3 +361,122 @@ export const getPolicyDetails = asyncHandler(async (req, res) => {
     )
   );
 });
+  // Check if user already has a pending or active application/proposal for this insurance plan
+  const existingApp = await PolicyApplication.findOne({
+    userId: req.user._id,
+    planId,
+    isDeleted: false,
+    status: { $in: ['PENDING_APPROVAL', 'APPROVED', 'POLICY_ISSUED'] },
+  }).populate('planId', 'name');
+
+  if (existingApp) {
+    const planName = existingApp.planId?.name || 'this insurance plan';
+    if (existingApp.status === 'PENDING_APPROVAL') {
+      throw new ApiError(
+        400,
+        `You have already applied for ${planName}. Your application is currently pending admin approval.`
+      );
+    }
+    if (['APPROVED', 'POLICY_ISSUED'].includes(existingApp.status)) {
+      throw new ApiError(
+        400,
+        `You already hold an active policy for ${planName}. Duplicate policy creation is not allowed.`
+      );
+    }
+  }
+
+  // Verify rate matrix to get pricing
+  const rateEntry = await PremiumRate.findOne({
+    planId,
+    optionId,
+    sumInsuredId,
+    ageSlabId,
+    familyTypeId,
+    isDeleted: false,
+    status: 'active',
+  });
+
+  if (!rateEntry) {
+    throw new ApiError(400, 'Invalid proposal parameters. Premium rate entry not found.');
+  }
+
+  const basePremium = rateEntry.basePremium;
+  const gstRate = rateEntry.gstPercentage || 18;
+  const gstAmount = Math.round((basePremium * (gstRate / 100)) * 100) / 100;
+  const totalPremium = Math.round((basePremium + gstAmount) * 100) / 100;
+
+  const proposalNumber = `PROP-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+  const policyNumber = `POL-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+
+  const proposal = await PolicyProposal.create({
+    proposalNumber,
+    policyNumber,
+    userId: req.user._id,
+    planId,
+    optionId,
+    sumInsuredId,
+    ageSlabId,
+    familyTypeId,
+    insuredMembers,
+    nominee,
+    pricing: {
+      basePremium,
+      gstPercentage: gstRate,
+      gstAmount,
+      totalPremium,
+    },
+    status: 'active', // Active immediately upon submission
+  });
+
+  const createdProposal = await PolicyProposal.findById(proposal._id)
+    .populate('planId', 'name slug logo')
+    .populate('optionId', 'name description')
+    .populate('sumInsuredId', 'displayName amount')
+    .populate('familyTypeId', 'name code');
+
+  return res.status(201).json(new ApiResponse(201, createdProposal, 'Policy proposal submitted and activated successfully!'));
+});
+
+export const getMyPolicies = asyncHandler(async (req, res) => {
+  const policies = await PolicyProposal.find({ userId: req.user._id, isDeleted: false })
+    .populate('planId', 'name slug logo shortDescription')
+    .populate('optionId', 'name description')
+    .populate('sumInsuredId', 'displayName amount')
+    .populate('familyTypeId', 'name code')
+    .sort({ createdAt: -1 });
+
+  return res.status(200).json(new ApiResponse(200, policies, 'Customer policies retrieved successfully'));
+});
+
+export const getPolicyDetails = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const policy = await PolicyProposal.findOne({ _id: id, userId: req.user._id, isDeleted: false })
+    .populate('planId', 'name slug logo description')
+    .populate('optionId', 'name description')
+    .populate('sumInsuredId', 'displayName amount')
+    .populate('ageSlabId', 'displayName')
+    .populate('familyTypeId', 'name code');
+
+  if (!policy) {
+    throw new ApiError(404, 'Policy record not found');
+  }
+
+  // Attach policy conditions and coverages
+  const [conditions, coverages] = await Promise.all([
+    PolicyCondition.findOne({ planId: policy.planId._id, isDeleted: false }),
+    PlanCoverage.find({ planId: policy.planId._id, optionId: policy.optionId._id, isDeleted: false }).populate('coverageId', 'title description icon'),
+  ]);
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        policy,
+        policyWording: conditions,
+        coverages: coverages.map((c) => ({ title: c.coverageId.title, description: c.coverageId.description, isCovered: c.isCovered, value: c.value })),
+      },
+      'Policy details fetched successfully'
+    )
+  );
+});
