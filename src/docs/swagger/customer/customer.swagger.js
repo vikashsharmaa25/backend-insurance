@@ -120,7 +120,6 @@
  *             type: object
  *             required:
  *               - planId
- *               - optionId
  *               - sumInsuredId
  *               - ageSlabId
  *               - familyTypeId
@@ -128,8 +127,6 @@
  *               - nominee
  *             properties:
  *               planId:
- *                 type: string
- *               optionId:
  *                 type: string
  *               sumInsuredId:
  *                 type: string

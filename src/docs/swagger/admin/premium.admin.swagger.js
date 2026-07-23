@@ -14,15 +14,12 @@
  *             type: object
  *             required:
  *               - planId
- *               - optionId
  *               - sumInsuredId
  *               - ageSlabId
  *               - familyTypeId
  *               - basePremium
  *             properties:
  *               planId:
- *                 type: string
- *               optionId:
  *                 type: string
  *               sumInsuredId:
  *                 type: string
@@ -47,10 +44,6 @@
  *     parameters:
  *       - in: query
  *         name: planId
- *         schema:
- *           type: string
- *       - in: query
- *         name: optionId
  *         schema:
  *           type: string
  *       - in: query
@@ -93,8 +86,6 @@
  *                   type: object
  *                   properties:
  *                     planId:
- *                       type: string
- *                     optionId:
  *                       type: string
  *                     sumInsuredId:
  *                       type: string
@@ -144,10 +135,10 @@
 
 /**
  * @swagger
- * /api/admin/plan-option-coverages:
+ * /api/admin/plan-coverages:
  *   post:
- *     summary: Map coverage to plan option (ADMIN Only)
- *     tags: [Plan Option Coverages]
+ *     summary: Map coverage to plan (ADMIN Only)
+ *     tags: [Plan Coverages]
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -158,12 +149,9 @@
  *             type: object
  *             required:
  *               - planId
- *               - optionId
  *               - coverageId
  *             properties:
  *               planId:
- *                 type: string
- *               optionId:
  *                 type: string
  *               coverageId:
  *                 type: string
@@ -177,8 +165,8 @@
  *       200:
  *         description: Coverage mapped
  *   get:
- *     summary: Get coverage matrix for plan options (ADMIN Only)
- *     tags: [Plan Option Coverages]
+ *     summary: Get coverage matrix for plan (ADMIN Only)
+ *     tags: [Plan Coverages]
  *     security:
  *       - cookieAuth: []
  *     responses:
@@ -190,7 +178,7 @@
  * @swagger
  * /api/admin/premium/upload-excel:
  *   post:
- *     summary: Bulk Upload Insurance Plans, Options, Coverages, and Rate Cards via Excel file (ADMIN Only)
+ *     summary: Bulk Upload Insurance Plans, Coverages, and Rate Cards via Excel file (ADMIN Only)
  *     tags: [Premium Rate Matrix]
  *     security:
  *       - cookieAuth: []
@@ -206,7 +194,7 @@
  *               file:
  *                 type: string
  *                 format: binary
- *                 description: Excel file (.xlsx, .xls) containing Plans, Options, Coverages, Coverage Matrix, Sum Insured, Age Slabs, Family Types, and Premium Rates sheets
+ *                 description: Excel file (.xlsx, .xls) containing Plans, Coverages, Coverage Matrix, Sum Insured, Age Slabs, Family Types, and Premium Rates sheets
  *     responses:
  *       200:
  *         description: Excel data imported successfully

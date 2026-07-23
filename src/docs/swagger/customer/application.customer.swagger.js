@@ -14,7 +14,6 @@
  *             type: object
  *             required:
  *               - planId
- *               - optionId
  *               - sumInsuredId
  *               - ageSlabId
  *               - familyTypeId
@@ -24,8 +23,6 @@
  *               - paymentDetails
  *             properties:
  *               planId:
- *                 type: string
- *               optionId:
  *                 type: string
  *               sumInsuredId:
  *                 type: string
