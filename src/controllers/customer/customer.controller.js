@@ -29,35 +29,70 @@ const calculateAgeFromDob = (dobString) => {
 // ==========================================
 
 export const getCustomerDashboard = asyncHandler(async (req, res) => {
-  const [plans, kyc] = await Promise.all([
+  const [plans, kyc, individualFamilyType, lowestSumInsured] = await Promise.all([
     Plan.find({ isDeleted: false, status: 'active' })
       .populate('slabs', 'displayName amount')
       .populate('sumInsuredSlabs', 'displayName amount'),
     req.user ? Kyc.findOne({ userId: req.user._id, isDeleted: false }).select('kycStatus dob gender') : null,
+    FamilyType.findOne({ isDeleted: false, status: 'active', $or: [{ code: 'INDIVIDUAL' }, { adultCount: 1, childCount: 0 }] }),
+    SumInsured.findOne({ isDeleted: false, status: 'active' }).sort({ amount: 1 }),
   ]);
+
+  // Calculate user age from DOB in KYC / User profile
+  let userAge = 25; // Default fallback age if DOB is not set
+  if (kyc && kyc.dob) {
+    userAge = calculateAgeFromDob(kyc.dob);
+  }
+
+  // Find matching active AgeSlab for userAge
+  const ageSlab = await AgeSlab.findOne({
+    minAge: { $lte: userAge },
+    maxAge: { $gte: userAge },
+    isDeleted: false,
+    status: 'active',
+  });
 
   const featuredPlans = await Promise.all(
     plans.map(async (plan) => {
-      const [minRate, planCoverages] = await Promise.all([
-        PremiumRate.findOne({
+      // Build specific query for user's age + individual cover + min sum insured
+      const query = {
+        planId: plan._id,
+        isDeleted: false,
+        status: 'active',
+      };
+      if (ageSlab) query.ageSlabId = ageSlab._id;
+      if (individualFamilyType) query.familyTypeId = individualFamilyType._id;
+      if (lowestSumInsured) query.sumInsuredId = lowestSumInsured._id;
+
+      let minRate = await PremiumRate.findOne(query).select('basePremium gstPercentage sumInsuredId');
+
+      // Fallback: if exact rate entry for user age slab is missing, find minimum rate entry for this plan
+      if (!minRate) {
+        minRate = await PremiumRate.findOne({
           planId: plan._id,
           isDeleted: false,
           status: 'active',
-        })
-          .sort({ basePremium: 1 })
-          .select('basePremium gstPercentage'),
-
-        PlanCoverage.find({
-          planId: plan._id,
-          isDeleted: false,
-        }).populate('coverageId', 'title description icon'),
-      ]);
+        }).sort({ basePremium: 1 }).select('basePremium gstPercentage sumInsuredId');
+      }
 
       let startingPrice = 499;
       if (minRate && minRate.basePremium) {
         const gst = minRate.gstPercentage || 18;
         startingPrice = Math.round(minRate.basePremium * (1 + gst / 100));
       }
+
+      // Selected sum insured for this price
+      let planSumInsured = lowestSumInsured;
+      if (minRate?.sumInsuredId) {
+        planSumInsured = await SumInsured.findById(minRate.sumInsuredId).select('displayName amount');
+      } else if (plan.sumInsuredSlabs && plan.sumInsuredSlabs.length > 0) {
+        planSumInsured = plan.sumInsuredSlabs[0];
+      }
+
+      const planCoverages = await PlanCoverage.find({
+        planId: plan._id,
+        isDeleted: false,
+      }).populate('coverageId', 'title description icon');
 
       return {
         _id: plan._id,
@@ -67,6 +102,13 @@ export const getCustomerDashboard = asyncHandler(async (req, res) => {
         description: plan.description || '',
         logo: plan.logo || '',
         status: plan.status,
+        calculatedAge: userAge,
+        matchedAgeSlab: ageSlab ? ageSlab.displayName || `${ageSlab.minAge}-${ageSlab.maxAge} Years` : '18-35 Years',
+        sumInsured: planSumInsured ? {
+          _id: planSumInsured._id,
+          displayName: planSumInsured.displayName,
+          amount: planSumInsured.amount,
+        } : null,
         sumInsuredSlabs: plan.sumInsuredSlabs || plan.slabs || [],
         coverages: planCoverages.map((c) => ({
           _id: c._id,
