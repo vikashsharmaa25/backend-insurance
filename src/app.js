@@ -35,18 +35,31 @@ const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (e.g., mobile apps, curl, Postman, server-to-server)
     if (!origin) return callback(null, true);
-    
     // Always echo back requesting origin to satisfy Access-Control-Allow-Credentials: true
     return callback(null, origin);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
   optionsSuccessStatus: 200,
 };
 
 // Apply CORS middleware to all requests & preflights
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
+// Explicit header middleware as backup
+app.use((req, res, next) => {
+  const origin = req.headers.origin || '*';
+  res.header('Access-Control-Allow-Origin', origin);
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  next();
+});
 
 // 2. Security HTTP Headers (configured for cross-origin resources)
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
@@ -59,7 +72,7 @@ if (env.NODE_ENV === 'development') {
 // 4. Rate Limiting (Prevent Brute-Force / DoS)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per window
+  max: 500, // Limit each IP to 500 requests per window
   message: 'Too many requests from this IP, please try again after 15 minutes.',
   standardHeaders: true,
   legacyHeaders: false,
@@ -67,8 +80,8 @@ const limiter = rateLimit({
 app.use('/api', limiter);
 
 // 5. Parsers (JSON & UrlEncoded payload size limitations)
-app.use(express.json({ limit: '10kb' }));
-app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // 6. Cookie Parser
 app.use(cookieParser());
