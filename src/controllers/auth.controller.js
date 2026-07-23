@@ -47,24 +47,15 @@ export const register = asyncHandler(async (req, res) => {
     isVerified: true,
   });
 
-  // Create dummy verified KYC record automatically
-  const parsedDob = dob ? new Date(dob) : new Date('1995-01-01');
-  const formattedGender = gender ? gender.toUpperCase() : 'MALE';
-
-  await Kyc.create({
-    userId: user._id,
-    dob: parsedDob,
-    gender: formattedGender,
-    panNumber: 'ABCDE1234F',
-    aadhaarNumber: '123456789012',
-    address: {
-      street: '123 Banking Enclave',
-      city: 'Mumbai',
-      state: 'Maharashtra',
-      pincode: '400001',
-    },
-    kycStatus: 'verified',
-  });
+  // Create KYC record with user-provided dob and gender only
+  if (dob || gender) {
+    await Kyc.create({
+      userId: user._id,
+      dob: dob ? new Date(dob) : undefined,
+      gender: gender ? gender.toUpperCase() : undefined,
+      kycStatus: 'pending',
+    });
+  }
 
   const createdUser = await User.findById(user._id).select('-password -refreshToken -otp -otpExpires');
   if (!createdUser) {
@@ -269,9 +260,6 @@ export const getCurrentUser = asyncHandler(async (req, res) => {
     dob: kyc ? kyc.dob : null,
     gender: kyc ? kyc.gender : null,
     kycStatus: kyc ? kyc.kycStatus : 'pending',
-    panNumber: kyc ? kyc.panNumber : null,
-    aadhaarNumber: kyc ? kyc.aadhaarNumber : null,
-    address: kyc ? kyc.address : null,
   };
 
   return res
