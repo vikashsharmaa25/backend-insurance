@@ -38,9 +38,13 @@ export const getCustomerDashboard = asyncHandler(async (req, res) => {
     SumInsured.findOne({ isDeleted: false, status: 'active' }).sort({ amount: 1 }),
   ]);
 
-  // Calculate user age from DOB in KYC / User profile
+  // Calculate user age from DOB in query / KYC / default
   let userAge = 25; // Default fallback age if DOB is not set
-  if (kyc && kyc.dob) {
+  if (req.query?.dob) {
+    userAge = calculateAgeFromDob(req.query.dob);
+  } else if (req.query?.age) {
+    userAge = parseInt(req.query.age, 10) || 25;
+  } else if (kyc && kyc.dob) {
     userAge = calculateAgeFromDob(kyc.dob);
   }
 
@@ -75,10 +79,13 @@ export const getCustomerDashboard = asyncHandler(async (req, res) => {
         }).sort({ basePremium: 1 }).select('basePremium gstPercentage sumInsuredId');
       }
 
+      let basePrice = 499;
       let startingPrice = 499;
+      let gstPercentage = 18;
       if (minRate && minRate.basePremium) {
-        const gst = minRate.gstPercentage || 18;
-        startingPrice = Math.round(minRate.basePremium * (1 + gst / 100));
+        basePrice = minRate.basePremium;
+        gstPercentage = minRate.gstPercentage || 18;
+        startingPrice = Math.round(basePrice * (1 + gstPercentage / 100));
       }
 
       // Selected sum insured for this price
@@ -118,8 +125,10 @@ export const getCustomerDashboard = asyncHandler(async (req, res) => {
           isCovered: c.isCovered,
           value: c.value,
         })),
+        basePrice,
         minPrice: startingPrice,
         startingPrice,
+        gstPercentage,
         createdAt: plan.createdAt,
         updatedAt: plan.updatedAt,
       };
