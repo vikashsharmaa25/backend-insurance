@@ -30,11 +30,43 @@ const calculateAgeFromDob = (dobString) => {
 
 export const getCustomerDashboard = asyncHandler(async (req, res) => {
   const [plans, sumInsureds, familyTypes, kyc] = await Promise.all([
-    Plan.find({ isDeleted: false, status: 'active' }).select('name slug shortDescription logo'),
+    Plan.find({ isDeleted: false, status: 'active' }).select('name slug shortDescription description logo'),
     SumInsured.find({ isDeleted: false, status: 'active' }).sort({ amount: 1 }).select('amount displayName'),
     FamilyType.find({ isDeleted: false, status: 'active' }).sort({ adultCount: 1, childCount: 1 }).select('name code adultCount childCount'),
     req.user ? Kyc.findOne({ userId: req.user._id, isDeleted: false }).select('kycStatus dob gender') : null,
   ]);
+
+  const featuredPlans = await Promise.all(
+    plans.map(async (plan) => {
+      const minRate = await PremiumRate.findOne({
+        planId: plan._id,
+        isDeleted: false,
+        status: 'active',
+      })
+        .sort({ basePremium: 1 })
+        .select('basePremium gstPercentage');
+
+      let startingPrice = 499;
+      if (minRate && minRate.basePremium) {
+        const gst = minRate.gstPercentage || 18;
+        startingPrice = Math.round(minRate.basePremium * (1 + gst / 100));
+      }
+
+      return {
+        _id: plan._id,
+        name: plan.name,
+        slug: plan.slug,
+        shortDescription:
+          plan.shortDescription ||
+          plan.description ||
+          'Comprehensive health coverage with zero copay & instant claims processing.',
+        description: plan.description || plan.shortDescription || '',
+        logo: plan.logo || '',
+        minPrice: startingPrice,
+        startingPrice,
+      };
+    })
+  );
 
   const dashboardData = {
     user: req.user
@@ -51,7 +83,7 @@ export const getCustomerDashboard = asyncHandler(async (req, res) => {
       { id: 1, title: 'Comprehensive Health Cover', subtitle: 'Zero Copay & Unlimited Reset', image: 'https://example.com/banner1.jpg' },
       { id: 2, title: 'Maternity & Newborn Cover', subtitle: 'Pre & Post Natal Expenses Covered', image: 'https://example.com/banner2.jpg' },
     ],
-    featuredPlans: plans,
+    featuredPlans,
     sumInsuredOptions: sumInsureds,
     familyTypes,
   };
