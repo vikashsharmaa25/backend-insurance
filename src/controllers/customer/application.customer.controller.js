@@ -137,7 +137,13 @@ export const getMyApplications = asyncHandler(async (req, res) => {
   const { status, page, limit } = req.query;
 
   const query = { userId: req.user._id, isDeleted: false };
-  if (status && status !== 'all') query.status = status;
+  if (status && status !== 'all') {
+    if (status === 'APPROVED' || status === 'POLICY_ISSUED') {
+      query.status = { $in: ['APPROVED', 'POLICY_ISSUED'] };
+    } else {
+      query.status = status;
+    }
+  }
 
   let queryExec = PolicyApplication.find(query)
     .populate('planId', 'name slug logo shortDescription')

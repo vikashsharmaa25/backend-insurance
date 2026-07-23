@@ -1,14 +1,85 @@
 import crypto from 'crypto';
 import { PolicyApplication } from '../../models/policyApplication.model.js';
+import { Plan } from '../../models/plan.model.js';
+import { Coverage } from '../../models/coverage.model.js';
 import ApiError from '../../utils/ApiError.js';
 import ApiResponse from '../../utils/ApiResponse.js';
 import asyncHandler from '../../utils/asyncHandler.js';
+
+export const getDashboardStats = asyncHandler(async (req, res) => {
+  const [
+    activePlansCount,
+    totalCoveragesCount,
+    pendingAppsCount,
+    approvedAppsCount,
+    rejectedAppsCount,
+    totalAppsCount,
+    recentApplications,
+    revenueResult,
+  ] = await Promise.all([
+    Plan.countDocuments({ isDeleted: false, status: 'active' }),
+    Coverage.countDocuments({ isDeleted: false, status: 'active' }),
+    PolicyApplication.countDocuments({ isDeleted: false, status: { $in: ['PENDING_APPROVAL', 'PENDING'] } }),
+    PolicyApplication.countDocuments({ isDeleted: false, status: { $in: ['APPROVED', 'POLICY_ISSUED'] } }),
+    PolicyApplication.countDocuments({ isDeleted: false, status: 'REJECTED' }),
+    PolicyApplication.countDocuments({ isDeleted: false }),
+    PolicyApplication.find({ isDeleted: false })
+      .populate('userId', 'firstName lastName email phone')
+      .populate('planId', 'name slug logo')
+      .populate('sumInsuredId', 'displayName amount')
+      .sort({ createdAt: -1 })
+      .limit(5),
+    PolicyApplication.aggregate([
+      {
+        $match: {
+          isDeleted: false,
+          status: { $in: ['APPROVED', 'POLICY_ISSUED'] },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: '$pricing.totalPremium' },
+        },
+      },
+    ]),
+  ]);
+
+  const totalRevenue = revenueResult[0]?.totalRevenue || 0;
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        stats: {
+          activePlans: activePlansCount,
+          totalCoverages: totalCoveragesCount,
+          pendingApps: pendingAppsCount,
+          approvedApps: approvedAppsCount,
+          rejectedApps: rejectedAppsCount,
+          totalApplications: totalAppsCount,
+          totalRevenue,
+        },
+        recentApplications,
+      },
+      'Executive dashboard metrics and stats retrieved successfully'
+    )
+  );
+});
 
 export const getAllApplications = asyncHandler(async (req, res) => {
   const { search, status, userId, page = 1, limit = 10 } = req.query;
 
   const query = { isDeleted: false };
-  if (status) query.status = status;
+  if (status) {
+    if (status === 'APPROVED' || status === 'POLICY_ISSUED') {
+      query.status = { $in: ['APPROVED', 'POLICY_ISSUED'] };
+    } else if (status === 'PENDING_APPROVAL' || status === 'PENDING') {
+      query.status = { $in: ['PENDING_APPROVAL', 'PENDING'] };
+    } else {
+      query.status = status;
+    }
+  }
   if (userId) query.userId = userId;
   if (search) {
     query.$or = [
