@@ -543,7 +543,7 @@ export const getCustomerKyc = asyncHandler(async (req, res) => {
 // ==========================================
 
 export const createPolicyProposal = asyncHandler(async (req, res) => {
-  let { planId, sumInsuredId, ageSlabId, familyTypeId, insuredMembers, nominee } = req.body;
+  let { planId, sumInsuredId, ageSlabId, familyTypeId, insuredMembers, masterMember, nominee } = req.body;
 
   const existingApp = await PolicyApplication.findOne({
     userId: req.user._id,
@@ -568,12 +568,32 @@ export const createPolicyProposal = asyncHandler(async (req, res) => {
     }
   }
 
-  // Auto-resolve ageSlabId if missing using primary insured member's DOB
-  if (!ageSlabId && insuredMembers && insuredMembers.length > 0 && insuredMembers[0].dob) {
-    const userAge = calculateAgeFromDob(insuredMembers[0].dob);
+  // Auto-resolve masterMember if not explicitly passed
+  let resolvedMaster = masterMember;
+  if (!resolvedMaster && insuredMembers && insuredMembers.length > 0) {
+    const oldestMember = insuredMembers.reduce((oldest, m) => {
+      const oldestAge = calculateAgeFromDob(oldest.dob);
+      const mAge = calculateAgeFromDob(m.dob);
+      return mAge > oldestAge ? m : oldest;
+    }, insuredMembers[0]);
+
+    resolvedMaster = {
+      name: oldestMember.name,
+      relation: oldestMember.relation,
+      dob: new Date(oldestMember.dob),
+      age: calculateAgeFromDob(oldestMember.dob),
+      aadhaar: oldestMember.aadhaar || '',
+    };
+  } else if (resolvedMaster && resolvedMaster.dob) {
+    resolvedMaster.dob = new Date(resolvedMaster.dob);
+    resolvedMaster.age = resolvedMaster.age || calculateAgeFromDob(resolvedMaster.dob);
+  }
+
+  // Auto-resolve ageSlabId if missing using master member's age
+  if (!ageSlabId && resolvedMaster && resolvedMaster.age) {
     const matchedSlab = await AgeSlab.findOne({
-      minAge: { $lte: userAge },
-      maxAge: { $gte: userAge },
+      minAge: { $lte: resolvedMaster.age },
+      maxAge: { $gte: resolvedMaster.age },
       isDeleted: false,
       status: 'active',
     });
@@ -592,7 +612,7 @@ export const createPolicyProposal = asyncHandler(async (req, res) => {
   });
 
   if (!rateEntry) {
-    throw new ApiError(400, 'Invalid proposal parameters. Premium rate entry not found.');
+    throw new ApiError(400, 'Invalid proposal parameters. Premium rate entry not found for this age slab and family composition.');
   }
 
   const basePremium = rateEntry.basePremium;
@@ -611,6 +631,7 @@ export const createPolicyProposal = asyncHandler(async (req, res) => {
     sumInsuredId,
     ageSlabId,
     familyTypeId,
+    masterMember: resolvedMaster,
     insuredMembers,
     nominee,
     pricing: {

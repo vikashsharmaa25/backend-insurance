@@ -43,6 +43,15 @@ export const createProposalSchema = z.object({
     sumInsuredId: z.string({ required_error: 'Sum Insured ID is required' }).refine(isValidObjectId, 'Invalid Sum Insured ID'),
     ageSlabId: z.string().refine(isValidObjectId, 'Invalid Age Slab ID').optional().nullable(),
     familyTypeId: z.string({ required_error: 'Family Type ID is required' }).refine(isValidObjectId, 'Invalid Family Type ID'),
+    masterMember: z
+      .object({
+        name: z.string().optional(),
+        relation: z.string().optional(),
+        dob: z.string().optional(),
+        age: z.number().optional(),
+        aadhaar: z.string().optional(),
+      })
+      .optional(),
     insuredMembers: z
       .array(
         z.object({
@@ -50,6 +59,9 @@ export const createProposalSchema = z.object({
           relation: z.string().min(1, 'Relation is required'),
           dob: z.string().min(1, 'Member DOB is required'),
           gender: z.enum(['MALE', 'FEMALE', 'OTHER']),
+          isMaster: z.boolean().optional(),
+          age: z.number().optional(),
+          aadhaar: z.string().optional(),
         })
       )
       .min(1, 'At least one insured member is required'),

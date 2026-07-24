@@ -6,6 +6,9 @@ const insuredMemberSchema = new mongoose.Schema(
     relation: { type: String, required: true, trim: true }, // e.g. Self, Spouse, Child 1
     dob: { type: Date, required: true },
     gender: { type: String, enum: ['MALE', 'FEMALE', 'OTHER'], required: true },
+    isMaster: { type: Boolean, default: false },
+    age: { type: Number },
+    aadhaar: { type: String, trim: true },
   },
   { _id: false }
 );
@@ -57,6 +60,13 @@ const policyProposalSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'FamilyType',
       required: [true, 'Family Type ID is required'],
+    },
+    masterMember: {
+      name: { type: String, trim: true },
+      relation: { type: String, trim: true },
+      dob: { type: Date },
+      age: { type: Number },
+      aadhaar: { type: String, trim: true },
     },
     insuredMembers: [insuredMemberSchema],
     nominee: nomineeSchema,
