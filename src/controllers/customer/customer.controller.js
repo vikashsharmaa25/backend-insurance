@@ -25,6 +25,28 @@ const calculateAgeFromDob = (dobString) => {
   return age;
 };
 
+const deduplicatePlanCoverages = (planCoverages) => {
+  if (!Array.isArray(planCoverages)) return [];
+  const map = new Map();
+  for (const c of planCoverages) {
+    if (!c || !c.coverageId) continue;
+    const key = c.coverageId._id
+      ? c.coverageId._id.toString()
+      : (c.coverageId.title || c.coverageId.toString());
+    if (!key) continue;
+
+    if (!map.has(key)) {
+      map.set(key, c);
+    } else {
+      const existing = map.get(key);
+      if (!existing.isCovered && c.isCovered) {
+        map.set(key, c);
+      }
+    }
+  }
+  return Array.from(map.values());
+};
+
 // ==========================================
 // 1. CUSTOMER DASHBOARD
 // ==========================================
@@ -141,7 +163,7 @@ export const getCustomerDashboard = asyncHandler(async (req, res) => {
           amount: planSumInsured.amount,
         } : null,
         sumInsuredSlabs: plan.sumInsuredSlabs || plan.slabs || [],
-        coverages: planCoverages.map((c) => ({
+        coverages: deduplicatePlanCoverages(planCoverages).map((c) => ({
           _id: c._id,
           title: c.coverageId?.title || '',
           description: c.coverageId?.description || '',
@@ -363,7 +385,7 @@ export const getCustomerPlanDetails = asyncHandler(async (req, res) => {
     isDeleted: false,
   }).populate('coverageId', 'title description icon category');
 
-  const coverages = planCoverages.map((c) => ({
+  const coverages = deduplicatePlanCoverages(planCoverages).map((c) => ({
     _id: c._id,
     coverageId: c.coverageId?._id,
     title: c.coverageId?.title || '',
@@ -518,7 +540,7 @@ export const explorePlansWithQuotes = asyncHandler(async (req, res) => {
         gstAmount,
         totalPremium,
       },
-      coverages: planCoverages.map((c) => ({
+      coverages: deduplicatePlanCoverages(planCoverages).map((c) => ({
         title: c.coverageId?.title,
         description: c.coverageId?.description,
         icon: c.coverageId?.icon,
@@ -708,11 +730,13 @@ export const getPolicyDetails = asyncHandler(async (req, res) => {
     throw new ApiError(404, 'Policy record not found');
   }
 
-  const coverages = await PlanCoverage.find({
+  const rawCoverages = await PlanCoverage.find({
     planId: policy.planId._id,
     $or: [{ sumInsuredId: policy.sumInsuredId?._id || policy.sumInsuredId }, { sumInsuredId: null }],
     isDeleted: false,
   }).populate('coverageId', 'title description icon');
+
+  const coverages = deduplicatePlanCoverages(rawCoverages);
 
   return res.status(200).json(
     new ApiResponse(
