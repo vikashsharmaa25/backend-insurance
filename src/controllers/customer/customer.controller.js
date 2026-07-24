@@ -656,11 +656,10 @@ export const createPolicyProposal = asyncHandler(async (req, res) => {
   const totalPremium = Math.round((basePremium + gstAmount) * 100) / 100;
 
   const proposalNumber = `PROP-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
-  const policyNumber = `POL-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 
   const proposal = await PolicyProposal.create({
     proposalNumber,
-    policyNumber,
+    policyNumber: '',
     userId: req.user._id,
     planId,
     sumInsuredId,
@@ -675,7 +674,7 @@ export const createPolicyProposal = asyncHandler(async (req, res) => {
       gstAmount,
       totalPremium,
     },
-    status: 'active',
+    status: 'submitted',
   });
 
   const createdProposal = await PolicyProposal.findById(proposal._id)
@@ -683,7 +682,7 @@ export const createPolicyProposal = asyncHandler(async (req, res) => {
     .populate('sumInsuredId', 'displayName amount')
     .populate('familyTypeId', 'name code');
 
-  return res.status(201).json(new ApiResponse(201, createdProposal, 'Policy proposal submitted and activated successfully!'));
+  return res.status(201).json(new ApiResponse(201, createdProposal, 'Policy proposal submitted successfully! Pending Admin Approval.'));
 });
 
 export const getMyPolicies = asyncHandler(async (req, res) => {
