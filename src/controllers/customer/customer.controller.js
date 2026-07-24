@@ -366,14 +366,7 @@ export const getCustomerPlanDetails = asyncHandler(async (req, res) => {
     sumInsuredOptions: sumInsuredPricingMap,
     familyTypeOptions,
     coverages,
-    keyHighlights: [
-      'Cashless Hospitalization across 10,000+ partner hospitals',
-      'In-patient hospitalization coverage (Room rent, ICU, Doctor fees)',
-      'Pre-hospitalization up to 60 days & Post-hospitalization up to 90 days',
-      'Day care treatment & AYUSH hospitalization included',
-      'Tax savings up to ₹75,000 under Section 80D',
-      'No claim bonus benefit up to 50% extra sum insured',
-    ],
+    keyHighlights: plan?.keyHighlights || [],
   };
 
   return res.status(200).json(new ApiResponse(200, planDetails, 'Plan details fetched successfully'));
