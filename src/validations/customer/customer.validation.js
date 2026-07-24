@@ -5,6 +5,8 @@ const isValidObjectId = (val) => objectIdRegex.test(val);
 
 export const submitKycSchema = z.object({
   body: z.object({
+    name: z.string().optional(),
+    email: z.string().email('Invalid email address').optional().or(z.literal('')),
     dob: z.string({ required_error: 'Date of birth is required' }).min(1, 'DOB cannot be empty'),
     gender: z.enum(['MALE', 'FEMALE', 'OTHER'], { required_error: 'Gender must be MALE, FEMALE, or OTHER' }),
     panNumber: z.string().min(10, 'Invalid PAN number').max(10, 'Invalid PAN number').optional(),

@@ -7,6 +7,7 @@ import { FamilyType } from '../../models/familyType.model.js';
 import { PlanCoverage } from '../../models/planCoverage.model.js';
 import { PremiumRate } from '../../models/premiumRate.model.js';
 import { Kyc } from '../../models/kyc.model.js';
+import { User } from '../../models/user.model.js';
 import { PolicyProposal } from '../../models/policyProposal.model.js';
 import { PolicyApplication } from '../../models/policyApplication.model.js';
 import ApiError from '../../utils/ApiError.js';
@@ -482,14 +483,14 @@ export const explorePlansWithQuotes = asyncHandler(async (req, res) => {
 // ==========================================
 
 export const submitCustomerKyc = asyncHandler(async (req, res) => {
-  const { dob, gender, panNumber, aadhaarNumber, address, idProofUrl } = req.body;
+  const { name, email, dob, gender, panNumber, aadhaarNumber, address, idProofUrl } = req.body;
 
   const kyc = await Kyc.findOneAndUpdate(
     { userId: req.user._id, isDeleted: false },
     {
       $set: {
         userId: req.user._id,
-        dob: new Date(dob),
+        dob: dob ? new Date(dob) : undefined,
         gender,
         panNumber: panNumber ? panNumber.toUpperCase() : undefined,
         aadhaarNumber,
@@ -501,7 +502,18 @@ export const submitCustomerKyc = asyncHandler(async (req, res) => {
     { new: true, upsert: true, runValidators: true }
   );
 
-  return res.status(200).json(new ApiResponse(200, kyc, 'KYC details submitted and verified successfully'));
+  // Sync profile fields (name, email, dob, gender) with User model
+  const userUpdates = {};
+  if (name) userUpdates.name = name;
+  if (email) userUpdates.email = email;
+  if (dob) userUpdates.dob = new Date(dob);
+  if (gender) userUpdates.gender = gender;
+
+  if (Object.keys(userUpdates).length > 0) {
+    await User.findByIdAndUpdate(req.user._id, { $set: userUpdates });
+  }
+
+  return res.status(200).json(new ApiResponse(200, kyc, 'KYC & User details submitted and verified successfully'));
 });
 
 export const getCustomerKyc = asyncHandler(async (req, res) => {
