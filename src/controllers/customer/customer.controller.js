@@ -366,7 +366,6 @@ export const getCustomerPlanDetails = asyncHandler(async (req, res) => {
     sumInsuredOptions: sumInsuredPricingMap,
     familyTypeOptions,
     coverages,
-    keyHighlights: plan?.keyHighlights || [],
   };
 
   return res.status(200).json(new ApiResponse(200, planDetails, 'Plan details fetched successfully'));

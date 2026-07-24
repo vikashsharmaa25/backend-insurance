@@ -26,12 +26,6 @@ const planSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
-    keyHighlights: [
-      {
-        type: String,
-        trim: true,
-      }
-    ],
     slabs: [
       {
         type: mongoose.Schema.Types.ObjectId,
