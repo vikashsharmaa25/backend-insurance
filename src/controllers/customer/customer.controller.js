@@ -160,6 +160,30 @@ export const getCustomerDashboard = asyncHandler(async (req, res) => {
     })
   );
 
+  // Fetch user active proposals/applications to mark applied plans
+  let userProposals = [];
+  if (req.user) {
+    userProposals = await PolicyProposal.find({
+      userId: req.user._id,
+      isDeleted: false,
+      status: { $in: ['submitted', 'approved', 'active', 'draft', 'PENDING_APPROVAL'] },
+    }).select('planId status proposalNumber');
+  }
+
+  const appliedMap = new Map();
+  userProposals.forEach((p) => {
+    appliedMap.set(p.planId.toString(), p.status);
+  });
+
+  const featuredPlansWithApplied = featuredPlans.map((fp) => {
+    const status = appliedMap.get(fp._id.toString());
+    return {
+      ...fp,
+      isApplied: Boolean(status),
+      appliedStatus: status || null,
+    };
+  });
+
   const dashboardData = {
     user: req.user
       ? {
@@ -171,7 +195,8 @@ export const getCustomerDashboard = asyncHandler(async (req, res) => {
           kycStatus: kyc ? kyc.kycStatus : 'pending',
         }
       : null,
-    featuredPlans,
+    featuredPlans: featuredPlansWithApplied,
+    appliedPlanIds: Array.from(appliedMap.keys()),
   };
 
   return res.status(200).json(new ApiResponse(200, dashboardData, 'Customer dashboard data fetched successfully'));
@@ -349,6 +374,20 @@ export const getCustomerPlanDetails = asyncHandler(async (req, res) => {
     value: c.value || '',
   }));
 
+  // Check if current user has already applied for this plan
+  let existingProposal = null;
+  if (req.user) {
+    existingProposal = await PolicyProposal.findOne({
+      userId: req.user._id,
+      planId: plan._id,
+      isDeleted: false,
+      status: { $in: ['submitted', 'approved', 'active', 'draft', 'PENDING_APPROVAL'] },
+    });
+  }
+
+  const isApplied = Boolean(existingProposal);
+  const appliedStatus = existingProposal ? existingProposal.status : null;
+
   const planDetails = {
     plan: {
       _id: plan._id,
@@ -365,7 +404,11 @@ export const getCustomerPlanDetails = asyncHandler(async (req, res) => {
     selectedSumInsured,
     selectedFamilyType,
     isAvailable,
-    message: isAvailable
+    isApplied,
+    appliedStatus,
+    message: isApplied
+      ? 'You have already applied for this plan. Proposal is currently under review.'
+      : isAvailable
       ? 'Package rate fetched successfully'
       : 'Package not available for the selected age slab and family composition.',
     pricing: {
@@ -545,27 +588,19 @@ export const getCustomerKyc = asyncHandler(async (req, res) => {
 export const createPolicyProposal = asyncHandler(async (req, res) => {
   let { planId, sumInsuredId, ageSlabId, familyTypeId, insuredMembers, masterMember, nominee } = req.body;
 
-  const existingApp = await PolicyApplication.findOne({
+  const existingProposal = await PolicyProposal.findOne({
     userId: req.user._id,
     planId,
     isDeleted: false,
-    status: { $in: ['PENDING_APPROVAL', 'APPROVED', 'POLICY_ISSUED'] },
+    status: { $in: ['submitted', 'approved', 'active', 'draft', 'PENDING_APPROVAL'] },
   }).populate('planId', 'name');
 
-  if (existingApp) {
-    const planName = existingApp.planId?.name || 'this insurance plan';
-    if (existingApp.status === 'PENDING_APPROVAL') {
-      throw new ApiError(
-        400,
-        `You have already applied for ${planName}. Your application is currently pending admin approval.`
-      );
-    }
-    if (['APPROVED', 'POLICY_ISSUED'].includes(existingApp.status)) {
-      throw new ApiError(
-        400,
-        `You already hold an active policy for ${planName}. Duplicate policy creation is not allowed.`
-      );
-    }
+  if (existingProposal) {
+    const planName = existingProposal.planId?.name || 'this insurance plan';
+    throw new ApiError(
+      400,
+      `You have already applied for ${planName}. Your policy proposal is currently under review or active. Duplicate applications for the same plan are not allowed.`
+    );
   }
 
   // Auto-resolve masterMember if not explicitly passed
