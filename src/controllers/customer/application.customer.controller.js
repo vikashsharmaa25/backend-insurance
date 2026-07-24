@@ -1,6 +1,5 @@
 import crypto from 'crypto';
 import { PolicyApplication } from '../../models/policyApplication.model.js';
-import { PolicyProposal } from '../../models/policyProposal.model.js';
 import { PremiumRate } from '../../models/premiumRate.model.js';
 import { AgeSlab } from '../../models/ageSlab.model.js';
 import ApiError from '../../utils/ApiError.js';
@@ -31,33 +30,22 @@ export const applyForInsurancePolicy = asyncHandler(async (req, res) => {
   } = req.body;
 
   // 1. Check if user already has a pending or active application for this insurance plan
-  const [existingApplication, existingProposal] = await Promise.all([
-    PolicyApplication.findOne({
-      userId: req.user._id,
-      planId,
-      isDeleted: false,
-      status: { $in: ['PENDING_APPROVAL', 'APPROVED', 'POLICY_ISSUED'] },
-    }).populate('planId', 'name'),
-    PolicyProposal.findOne({
-      userId: req.user._id,
-      planId,
-      isDeleted: false,
-      status: { $in: ['submitted', 'approved', 'active', 'draft', 'PENDING_APPROVAL', 'APPROVED', 'POLICY_ISSUED'] },
-    }).populate('planId', 'name'),
-  ]);
+  const existingApplication = await PolicyApplication.findOne({
+    userId: req.user._id,
+    planId,
+    isDeleted: false,
+    status: { $in: ['PENDING_APPROVAL', 'APPROVED', 'POLICY_ISSUED'] },
+  }).populate('planId', 'name');
 
-  const existingRecord = existingApplication || existingProposal;
-
-  if (existingRecord) {
-    const planName = existingRecord.planId?.name || 'this insurance plan';
-    const status = existingRecord.status;
-    if (['PENDING_APPROVAL', 'submitted', 'draft'].includes(status)) {
+  if (existingApplication) {
+    const planName = existingApplication.planId?.name || 'this insurance plan';
+    if (existingApplication.status === 'PENDING_APPROVAL') {
       throw new ApiError(
         400,
         `You have already applied for ${planName}. Your application is currently pending admin approval. You cannot re-apply until it is approved or rejected.`
       );
     }
-    if (['APPROVED', 'POLICY_ISSUED', 'active', 'approved'].includes(status)) {
+    if (['APPROVED', 'POLICY_ISSUED'].includes(existingApplication.status)) {
       throw new ApiError(
         400,
         `You already hold an active policy for ${planName}. Duplicate policy applications are not allowed.`
