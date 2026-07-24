@@ -34,6 +34,10 @@ export const createRazorpayOrder = asyncHandler(async (req, res) => {
     throw new ApiError(404, 'Policy proposal not found');
   }
 
+  if (['active', 'APPROVED', 'POLICY_ISSUED'].includes(proposal.status)) {
+    throw new ApiError(400, 'Payment has already been completed and policy is active for this proposal.');
+  }
+
   const totalPremium = proposal.pricing?.totalPremium || 0;
   if (totalPremium <= 0) {
     throw new ApiError(400, 'Invalid proposal amount for payment');
