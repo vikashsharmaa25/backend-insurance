@@ -22,6 +22,7 @@ import applicationAdminRouter from './routes/admin/application.admin.routes.js';
 // 📱 Customer Mobile App Routes
 import customerRouter from './routes/customer/customer.routes.js';
 import applicationCustomerRouter from './routes/customer/application.customer.routes.js';
+import paymentCustomerRouter from './routes/customer/payment.routes.js';
 
 import errorHandler from './middleware/error.middleware.js';
 import ApiError from './utils/ApiError.js';
@@ -139,6 +140,7 @@ app.use('/api/admin', applicationAdminRouter);
 // 📱 Customer Mobile App Routes (/api/customer/*)
 app.use('/api', customerRouter);
 app.use('/api', applicationCustomerRouter);
+app.use('/api/customer/payments', paymentCustomerRouter);
 
 // 12. Catch-all undefined routes
 app.all('*', (req, res, next) => {
