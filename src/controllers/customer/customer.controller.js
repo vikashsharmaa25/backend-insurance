@@ -183,7 +183,8 @@ export const getCustomerDashboard = asyncHandler(async (req, res) => {
 
 export const getCustomerPlanDetails = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { dob, age } = req.query;
+  const params = { ...req.query, ...req.body };
+  const { dob, age, familyTypeId, familyTypeCode, adultCount, childCount, sumInsuredId } = params;
 
   const plan = await Plan.findOne({ _id: id, isDeleted: false, status: 'active' })
     .populate('slabs', 'displayName amount')
@@ -193,7 +194,7 @@ export const getCustomerPlanDetails = asyncHandler(async (req, res) => {
     throw new ApiError(404, 'Insurance Plan not found or inactive');
   }
 
-  // Calculate user age from query dob/age, or user profile/KYC, or default minAge
+  // Calculate master user age from query/body dob/age, or user profile/KYC
   let userAge = null;
   if (dob) {
     userAge = calculateAgeFromDob(dob);
@@ -202,7 +203,6 @@ export const getCustomerPlanDetails = asyncHandler(async (req, res) => {
   } else if (req.user && req.user.dob) {
     userAge = calculateAgeFromDob(req.user.dob);
   } else {
-    // try to find from KYC
     const kyc = req.user ? await Kyc.findOne({ userId: req.user._id, isDeleted: false }).select('dob') : null;
     if (kyc && kyc.dob) {
       userAge = calculateAgeFromDob(kyc.dob);
@@ -233,14 +233,51 @@ export const getCustomerPlanDetails = asyncHandler(async (req, res) => {
     sumInsuredOptions = await SumInsured.find({ isDeleted: false, status: 'active' }).sort({ amount: 1 });
   }
 
-  // Fetch all active family types
-  const familyTypeOptions = await FamilyType.find({ isDeleted: false, status: 'active' }).sort({ adultCount: 1, childCount: 1 });
+  // Fetch all active family types (or ensure defaults exist)
+  let familyTypeOptions = await FamilyType.find({ isDeleted: false, status: 'active' }).sort({ adultCount: 1, childCount: 1 });
+  if (!familyTypeOptions || familyTypeOptions.length === 0) {
+    familyTypeOptions = await FamilyType.insertMany([
+      { name: 'Individual (1 Adult)', code: 'INDIVIDUAL', adultCount: 1, childCount: 0 },
+      { name: '1 Adult + 1 Child', code: '1A+1C', adultCount: 1, childCount: 1 },
+      { name: '2 Adults', code: '2A', adultCount: 2, childCount: 0 },
+      { name: '2 Adults + 1 Child', code: '2A+1C', adultCount: 2, childCount: 1 },
+      { name: '2 Adults + 2 Children', code: '2A+2C', adultCount: 2, childCount: 2 },
+    ]);
+  }
 
-  // Default selected sumInsured (first available)
-  const selectedSumInsured = sumInsuredOptions.length > 0 ? sumInsuredOptions[0] : null;
+  // Determine selected sumInsured
+  let selectedSumInsured = null;
+  if (sumInsuredId) {
+    selectedSumInsured = sumInsuredOptions.find((si) => si._id.toString() === sumInsuredId);
+  }
+  if (!selectedSumInsured) {
+    selectedSumInsured = sumInsuredOptions.length > 0 ? sumInsuredOptions[0] : null;
+  }
 
-  // Default selected familyType (INDIVIDUAL or first available)
-  const selectedFamilyType = familyTypeOptions.find((ft) => ft.code === 'INDIVIDUAL') || (familyTypeOptions.length > 0 ? familyTypeOptions[0] : null);
+  // Determine selected familyType dynamically
+  let selectedFamilyType = null;
+  if (familyTypeId) {
+    selectedFamilyType = familyTypeOptions.find((ft) => ft._id.toString() === familyTypeId);
+  }
+  if (!selectedFamilyType && familyTypeCode) {
+    const normalizedCode = familyTypeCode.replace('K', 'C').toUpperCase();
+    selectedFamilyType = familyTypeOptions.find((ft) => ft.code.toUpperCase() === normalizedCode);
+  }
+  if (!selectedFamilyType && (adultCount !== undefined || childCount !== undefined)) {
+    const reqAdults = parseInt(adultCount || '1', 10);
+    const reqChildren = parseInt(childCount || '0', 10);
+    selectedFamilyType = familyTypeOptions.find(
+      (ft) => ft.adultCount === reqAdults && ft.childCount === reqChildren
+    );
+    if (!selectedFamilyType) {
+      selectedFamilyType = familyTypeOptions.find(
+        (ft) => ft.adultCount >= reqAdults && ft.childCount >= reqChildren
+      );
+    }
+  }
+  if (!selectedFamilyType) {
+    selectedFamilyType = familyTypeOptions.find((ft) => ft.code === 'INDIVIDUAL') || familyTypeOptions[0];
+  }
 
   // Find rate for selected combination or fallback
   let selectedRate = null;
@@ -250,6 +287,16 @@ export const getCustomerPlanDetails = asyncHandler(async (req, res) => {
       ageSlabId: ageSlab._id,
       sumInsuredId: selectedSumInsured._id,
       familyTypeId: selectedFamilyType._id,
+      isDeleted: false,
+      status: 'active',
+    });
+  }
+
+  if (!selectedRate && ageSlab && selectedSumInsured) {
+    selectedRate = await PremiumRate.findOne({
+      planId: plan._id,
+      ageSlabId: ageSlab._id,
+      sumInsuredId: selectedSumInsured._id,
       isDeleted: false,
       status: 'active',
     });
@@ -272,12 +319,20 @@ export const getCustomerPlanDetails = asyncHandler(async (req, res) => {
     }).sort({ basePremium: 1 });
   }
 
-  let basePremium = selectedRate ? selectedRate.basePremium : 0;
+  // Multiplier for family members if base rate is per individual
+  let familyMultiplier = 1;
+  if (selectedFamilyType && selectedFamilyType.code !== 'INDIVIDUAL') {
+    if (!selectedRate || selectedRate.familyTypeId?.toString() !== selectedFamilyType._id.toString()) {
+      familyMultiplier = (selectedFamilyType.adultCount || 1) + (selectedFamilyType.childCount || 0) * 0.5;
+    }
+  }
+
+  let basePremium = selectedRate ? Math.round(selectedRate.basePremium * familyMultiplier) : 0;
   let gstPercentage = selectedRate ? (selectedRate.gstPercentage || 18) : 18;
   let gstAmount = Math.round((basePremium * (gstPercentage / 100)) * 100) / 100;
   let totalPremium = Math.round((basePremium + gstAmount) * 100) / 100;
 
-  // Calculate pricing breakdown for ALL sum insured options for quick dynamic UI selection
+  // Calculate pricing breakdown for ALL sum insured options
   const sumInsuredPricingMap = await Promise.all(
     sumInsuredOptions.map(async (si) => {
       let rate = null;
@@ -309,7 +364,7 @@ export const getCustomerPlanDetails = asyncHandler(async (req, res) => {
         });
       }
 
-      const base = rate ? rate.basePremium : basePremium;
+      const base = rate ? Math.round(rate.basePremium * familyMultiplier) : basePremium;
       const gst = rate ? (rate.gstPercentage || 18) : gstPercentage;
       const gstAmt = Math.round((base * (gst / 100)) * 100) / 100;
       const total = Math.round((base + gstAmt) * 100) / 100;
@@ -369,7 +424,7 @@ export const getCustomerPlanDetails = asyncHandler(async (req, res) => {
     coverages,
   };
 
-  return res.status(200).json(new ApiResponse(200, planDetails, 'Plan details fetched successfully'));
+  return res.status(200).json(new ApiResponse(200, planDetails, 'Customer plan details fetched successfully'));
 });
 
 // ==========================================
