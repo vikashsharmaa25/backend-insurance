@@ -78,8 +78,21 @@ const policyProposalSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['draft', 'submitted', 'approved', 'active', 'expired'],
+      enum: ['draft', 'submitted', 'approved', 'active', 'rejected', 'expired', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'POLICY_ISSUED'],
       default: 'submitted',
+    },
+    rejectionReason: {
+      type: String,
+      default: '',
+    },
+    reviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    reviewedAt: {
+      type: Date,
+      default: null,
     },
     startDate: { type: Date, default: Date.now },
     endDate: { type: Date },
