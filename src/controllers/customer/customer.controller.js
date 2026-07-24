@@ -279,7 +279,7 @@ export const getCustomerPlanDetails = asyncHandler(async (req, res) => {
     selectedFamilyType = familyTypeOptions.find((ft) => ft.code === 'INDIVIDUAL') || familyTypeOptions[0];
   }
 
-  // Find rate for selected combination or fallback
+  // Strict PremiumRate lookup from Admin's configured Matrix (NO fallbacks!)
   let selectedRate = null;
   if (ageSlab && selectedSumInsured && selectedFamilyType) {
     selectedRate = await PremiumRate.findOne({
@@ -292,47 +292,13 @@ export const getCustomerPlanDetails = asyncHandler(async (req, res) => {
     });
   }
 
-  if (!selectedRate && ageSlab && selectedSumInsured) {
-    selectedRate = await PremiumRate.findOne({
-      planId: plan._id,
-      ageSlabId: ageSlab._id,
-      sumInsuredId: selectedSumInsured._id,
-      isDeleted: false,
-      status: 'active',
-    });
-  }
+  const isAvailable = Boolean(selectedRate && selectedRate.basePremium > 0);
+  let basePremium = isAvailable ? selectedRate.basePremium : 0;
+  let gstPercentage = isAvailable ? (selectedRate.gstPercentage || 18) : 18;
+  let gstAmount = isAvailable ? Math.round((basePremium * (gstPercentage / 100)) * 100) / 100 : 0;
+  let totalPremium = isAvailable ? Math.round((basePremium + gstAmount) * 100) / 100 : 0;
 
-  if (!selectedRate && ageSlab) {
-    selectedRate = await PremiumRate.findOne({
-      planId: plan._id,
-      ageSlabId: ageSlab._id,
-      isDeleted: false,
-      status: 'active',
-    }).sort({ basePremium: 1 });
-  }
-
-  if (!selectedRate) {
-    selectedRate = await PremiumRate.findOne({
-      planId: plan._id,
-      isDeleted: false,
-      status: 'active',
-    }).sort({ basePremium: 1 });
-  }
-
-  // Multiplier for family members if base rate is per individual
-  let familyMultiplier = 1;
-  if (selectedFamilyType && selectedFamilyType.code !== 'INDIVIDUAL') {
-    if (!selectedRate || selectedRate.familyTypeId?.toString() !== selectedFamilyType._id.toString()) {
-      familyMultiplier = (selectedFamilyType.adultCount || 1) + (selectedFamilyType.childCount || 0) * 0.5;
-    }
-  }
-
-  let basePremium = selectedRate ? Math.round(selectedRate.basePremium * familyMultiplier) : 0;
-  let gstPercentage = selectedRate ? (selectedRate.gstPercentage || 18) : 18;
-  let gstAmount = Math.round((basePremium * (gstPercentage / 100)) * 100) / 100;
-  let totalPremium = Math.round((basePremium + gstAmount) * 100) / 100;
-
-  // Calculate pricing breakdown for ALL sum insured options
+  // Calculate pricing breakdown for ALL sum insured options strictly from Admin matrix
   const sumInsuredPricingMap = await Promise.all(
     sumInsuredOptions.map(async (si) => {
       let rate = null;
@@ -346,33 +312,18 @@ export const getCustomerPlanDetails = asyncHandler(async (req, res) => {
           status: 'active',
         });
       }
-      if (!rate && ageSlab) {
-        rate = await PremiumRate.findOne({
-          planId: plan._id,
-          sumInsuredId: si._id,
-          ageSlabId: ageSlab._id,
-          isDeleted: false,
-          status: 'active',
-        });
-      }
-      if (!rate) {
-        rate = await PremiumRate.findOne({
-          planId: plan._id,
-          sumInsuredId: si._id,
-          isDeleted: false,
-          status: 'active',
-        });
-      }
 
-      const base = rate ? Math.round(rate.basePremium * familyMultiplier) : basePremium;
-      const gst = rate ? (rate.gstPercentage || 18) : gstPercentage;
-      const gstAmt = Math.round((base * (gst / 100)) * 100) / 100;
-      const total = Math.round((base + gstAmt) * 100) / 100;
+      const rateAvailable = Boolean(rate && rate.basePremium > 0);
+      const base = rateAvailable ? rate.basePremium : 0;
+      const gst = rateAvailable ? (rate.gstPercentage || 18) : 18;
+      const gstAmt = rateAvailable ? Math.round((base * (gst / 100)) * 100) / 100 : 0;
+      const total = rateAvailable ? Math.round((base + gstAmt) * 100) / 100 : 0;
 
       return {
         _id: si._id,
         displayName: si.displayName,
         amount: si.amount,
+        isAvailable: rateAvailable,
         basePremium: base,
         gstPercentage: gst,
         gstAmount: gstAmt,
@@ -413,6 +364,10 @@ export const getCustomerPlanDetails = asyncHandler(async (req, res) => {
     matchedAgeSlab: ageSlab ? { _id: ageSlab._id, displayName: ageSlab.displayName, minAge: ageSlab.minAge, maxAge: ageSlab.maxAge } : null,
     selectedSumInsured,
     selectedFamilyType,
+    isAvailable,
+    message: isAvailable
+      ? 'Package rate fetched successfully'
+      : 'Package not available for the selected age slab and family composition.',
     pricing: {
       basePremium,
       gstPercentage,
