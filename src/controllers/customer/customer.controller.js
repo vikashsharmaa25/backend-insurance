@@ -235,23 +235,11 @@ export const getCustomerPlanDetails = asyncHandler(async (req, res) => {
   // Fetch all active family types
   const familyTypeOptions = await FamilyType.find({ isDeleted: false, status: 'active' }).sort({ adultCount: 1, childCount: 1 });
 
-  // Determine selected sumInsured
-  let selectedSumInsured = null;
-  if (sumInsuredId) {
-    selectedSumInsured = sumInsuredOptions.find((si) => si._id.toString() === sumInsuredId);
-  }
-  if (!selectedSumInsured && sumInsuredOptions.length > 0) {
-    selectedSumInsured = sumInsuredOptions[0];
-  }
+  // Default selected sumInsured (first available)
+  const selectedSumInsured = sumInsuredOptions.length > 0 ? sumInsuredOptions[0] : null;
 
-  // Determine selected familyType
-  let selectedFamilyType = null;
-  if (familyTypeId) {
-    selectedFamilyType = familyTypeOptions.find((ft) => ft._id.toString() === familyTypeId);
-  }
-  if (!selectedFamilyType && familyTypeOptions.length > 0) {
-    selectedFamilyType = familyTypeOptions.find((ft) => ft.code === 'INDIVIDUAL') || familyTypeOptions[0];
-  }
+  // Default selected familyType (INDIVIDUAL or first available)
+  const selectedFamilyType = familyTypeOptions.find((ft) => ft.code === 'INDIVIDUAL') || (familyTypeOptions.length > 0 ? familyTypeOptions[0] : null);
 
   // Find rate for selected combination or fallback
   let selectedRate = null;
