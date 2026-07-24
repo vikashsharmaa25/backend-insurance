@@ -614,15 +614,18 @@ export const createPolicyProposal = asyncHandler(async (req, res) => {
     userId: req.user._id,
     planId,
     isDeleted: false,
-    status: { $in: ['submitted', 'approved', 'active', 'draft', 'PENDING_APPROVAL'] },
+    status: { $in: ['submitted', 'approved', 'active', 'draft', 'PENDING_APPROVAL', 'POLICY_ISSUED'] },
   }).populate('planId', 'name');
 
   if (existingProposal) {
-    const planName = existingProposal.planId?.name || 'this insurance plan';
-    throw new ApiError(
-      400,
-      `You have already applied for ${planName}. Your policy proposal is currently under review or active. Duplicate applications for the same plan are not allowed.`
-    );
+    if (['active', 'POLICY_ISSUED', 'APPROVED'].includes(existingProposal.status)) {
+      const planName = existingProposal.planId?.name || 'this insurance plan';
+      throw new ApiError(
+        400,
+        `You have already purchased and activated ${planName}.`
+      );
+    }
+    return res.status(200).json(new ApiResponse(200, existingProposal, 'Existing proposal retrieved for payment processing'));
   }
 
   // Auto-resolve masterMember if not explicitly passed
